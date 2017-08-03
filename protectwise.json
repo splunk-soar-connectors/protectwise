@@ -1,7 +1,7 @@
 {
   "appid": "e8f8d8dc-916f-4267-be15-e9b697dd58c5",
   "name": "ProtectWise",
-  "description": "This app integrates with the ProtectWise cloud platform to implement ingestion and investigative actions like <b>get event details</b>.",
+  "description": "This app integrates with the <b>ProtectWise</b> cloud platform to implement <b>ingestion</b> and <b>investigative</b> actions",
   "publisher": "Phantom",
   "type": "siem",
   "main_module": "protectwise_connector.pyc",
@@ -192,7 +192,7 @@
     },
     {
       "action": "hunt ip",
-      "description": "Hunt an IP in the network.",
+      "description": "Hunt an IP in the network",
       "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
       "type": "investigate",
       "identifier": "hunt_ip",
@@ -1285,7 +1285,7 @@
     },
     {
       "action": "hunt domain",
-      "description": "Hunt a domain in the network.",
+      "description": "Hunt a domain in the network",
       "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
       "type": "investigate",
       "identifier": "hunt_domain",
@@ -1439,7 +1439,7 @@
     },
     {
       "action": "hunt file",
-      "description": "Hunt for a file in the network.",
+      "description": "Hunt for a file in the network",
       "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
       "type": "investigate",
       "identifier": "hunt_file",
