@@ -29,9 +29,6 @@ from datetime import datetime
 from datetime import timedelta
 
 
-requests.packages.urllib3.disable_warnings()
-
-
 class ProtectWiseConnector(BaseConnector):
 
     # List of all the actions that this app supports
