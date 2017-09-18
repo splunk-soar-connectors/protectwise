@@ -1,7 +1,7 @@
 {
   "appid": "e8f8d8dc-916f-4267-be15-e9b697dd58c5",
   "name": "ProtectWise",
-  "description": "This app integrates with the <b>ProtectWise</b> cloud platform to implement <b>ingestion</b> and <b>investigative</b> actions",
+  "description": "This app integrates with the ProtectWise cloud platform to implement ingestion and investigative actions",
   "publisher": "Phantom",
   "type": "siem",
   "main_module": "protectwise_connector.pyc",
@@ -11,7 +11,7 @@
   "product_name": "ProtectWise",
   "product_vendor": "ProtectWise",
   "product_version_regex": ".*",
-  "min_phantom_version": "3.0.190",
+  "min_phantom_version": "3.0.247",
   "logo": "protectwise.png",
   "license": "Copyright (c) Phantom Cyber Corporation 2016-2017",
   "configuration": {
