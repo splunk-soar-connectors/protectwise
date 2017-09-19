@@ -5,8 +5,8 @@
   "publisher": "Phantom",
   "type": "siem",
   "main_module": "protectwise_connector.pyc",
-    "app_version": "1.0.19",
-    "utctime_updated": "2017-08-28T22:58:06.000000Z",
+  "app_version": "1.0.20",
+  "utctime_updated": "2017-09-19T23:29:14.000000Z",
   "package_name": "phantom_protectwise",
   "product_name": "ProtectWise",
   "product_vendor": "ProtectWise",
@@ -22,25 +22,25 @@
       "required": true
     },
     "max_containers": {
-        "data_type": "numeric",
-        "description": "Maximum events for scheduled polling",
-        "order": 1,
-        "default": 100,
-        "required": true
+      "data_type": "numeric",
+      "description": "Maximum events for scheduled polling",
+      "order": 1,
+      "default": 100,
+      "required": true
     },
     "first_run_max_events": {
-        "data_type": "numeric",
-        "order": 2,
-        "description": "Maximum events to poll first time",
-        "default": 2000,
-        "required": true
+      "data_type": "numeric",
+      "order": 2,
+      "description": "Maximum events to poll first time",
+      "default": 2000,
+      "required": true
     },
     "poll_hours": {
-        "data_type": "numeric",
-        "order": 3,
-        "description": "Ingest events in last N hours (Poll Now and First Run)",
-        "default": 1,
-        "required": false
+      "data_type": "numeric",
+      "order": 3,
+      "description": "Ingest events in last N hours (Poll Now and First Run)",
+      "default": 1,
+      "required": false
     }
   },
   "actions": [
@@ -67,7 +67,10 @@
           "data_type": "string",
           "order": 0,
           "description": "The ID type",
-          "value_list": ["Event", "Observation"],
+          "value_list": [
+            "Event",
+            "Observation"
+          ],
           "default": "Observation",
           "required": true
         },
@@ -75,7 +78,10 @@
           "data_type": "string",
           "order": 1,
           "description": "ID Value (Event or Observation )",
-          "contains": ["protectwise event id", "protectwise observation id"],
+          "contains": [
+            "protectwise event id",
+            "protectwise observation id"
+          ],
           "primary": true,
           "required": true
         },
@@ -83,7 +89,9 @@
           "data_type": "string",
           "order": 2,
           "description": "Sensor ID",
-          "contains": ["protectwise sensor id"],
+          "contains": [
+            "protectwise sensor id"
+          ],
           "required": false,
           "primary": true
         }
@@ -111,7 +119,9 @@
         {
           "data_path": "action_result.data.*.netflows.*.sensorId",
           "data_type": "numeric",
-          "contains": ["protectwise sensor id"]
+          "contains": [
+            "protectwise sensor id"
+          ]
         },
         {
           "data_path": "action_result.data.*.netflows.*.startTime",
@@ -128,7 +138,9 @@
         {
           "data_path": "action_result.data.*.vault_info.vault_id",
           "data_type": "string",
-          "contains": [ "vault id" ],
+          "contains": [
+            "vault id"
+          ],
           "column_order": 1,
           "column_name": "Vault ID"
         },
@@ -163,7 +175,10 @@
         {
           "data_path": "action_result.parameter.id",
           "data_type": "string",
-          "contains": ["protectwise event id", "protectwise observation id"]
+          "contains": [
+            "protectwise event id",
+            "protectwise observation id"
+          ]
         },
         {
           "data_path": "action_result.parameter.type",
@@ -172,12 +187,16 @@
         {
           "data_path": "action_result.parameter.sensor_id",
           "data_type": "string",
-          "contains": ["protectwise sensor id"]
+          "contains": [
+            "protectwise sensor id"
+          ]
         },
         {
           "data_path": "action_result.summary.vault_id",
           "data_type": "string",
-          "contains": [ "vault id" ]
+          "contains": [
+            "vault id"
+          ]
         },
         {
           "data_path": "summary.total_objects",
@@ -201,7 +220,9 @@
         "ip": {
           "data_type": "string",
           "order": 0,
-          "contains": [ "ip" ],
+          "contains": [
+            "ip"
+          ],
           "description": "IP Address",
           "required": true,
           "primary": true
@@ -1260,7 +1281,9 @@
         {
           "data_path": "action_result.parameter.ip",
           "data_type": "string",
-          "contains": ["ip"],
+          "contains": [
+            "ip"
+          ],
           "column_name": "IP",
           "column_order": 0
         },
@@ -1294,7 +1317,9 @@
         "domain": {
           "data_type": "string",
           "order": 0,
-          "contains": [ "domain" ],
+          "contains": [
+            "domain"
+          ],
           "description": "Domain",
           "required": true,
           "primary": true
@@ -1422,7 +1447,9 @@
         {
           "data_path": "action_result.parameter.domain",
           "data_type": "string",
-          "contains": [ "domain"],
+          "contains": [
+            "domain"
+          ],
           "column_order": 0,
           "column_name": "Domain"
         },
@@ -1448,7 +1475,10 @@
         "hash": {
           "data_type": "string",
           "order": 0,
-          "contains": [ "hash", "sha256" ],
+          "contains": [
+            "hash",
+            "sha256"
+          ],
           "description": "File Hash",
           "required": true,
           "primary": true
@@ -1533,7 +1563,9 @@
         {
           "data_path": "action_result.data.*.behavior.network.dns.*.ip",
           "data_type": "string",
-          "contains": ["ip"]
+          "contains": [
+            "ip"
+          ]
         },
         {
           "contains": [
@@ -1545,22 +1577,30 @@
         {
           "data_path": "action_result.data.*.behavior.network.tcp.*.dst",
           "data_type": "string",
-          "contains": ["ip"]
+          "contains": [
+            "ip"
+          ]
         },
         {
           "data_path": "action_result.data.*.behavior.network.tcp.*.src",
           "data_type": "string",
-          "contains": ["ip"]
+          "contains": [
+            "ip"
+          ]
         },
         {
           "data_path": "action_result.data.*.behavior.network.tcp.*.dport",
           "data_type": "numeric",
-          "contains": ["port"]
+          "contains": [
+            "port"
+          ]
         },
         {
           "data_path": "action_result.data.*.behavior.network.tcp.*.sport",
           "data_type": "numeric",
-          "contains": ["port"]
+          "contains": [
+            "port"
+          ]
         },
         {
           "data_path": "action_result.data.*.behavior.network.udp.*.dst",
@@ -1907,7 +1947,10 @@
           "data_type": "string"
         },
         {
-          "contains": [ "hash", "sha256" ],
+          "contains": [
+            "hash",
+            "sha256"
+          ],
           "data_path": "action_result.parameter.hash",
           "data_type": "string"
         },
@@ -1989,5 +2032,5 @@
       "output": [],
       "versions": "EQ(*)"
     }
-    ]
-  }
+  ]
+}
