@@ -62,7 +62,7 @@
             "type": "investigate",
             "identifier": "get_packets",
             "read_only": true,
-            "verbose": "A few things to note:<ul><li>Valid values for the <b>type</b> parameter are: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as it's <b>Source ID</b>(source_data_identifier)<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"/></a><br>Unfortunately this value can get clipped in the UI. Instead use the download button to download the container json and extract the source_data_identifier key value<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"/></a><br></li><li>The <b>sensor_id</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;.pcap</li></ul>",
+            "verbose": "A few things to note:<ul><li>Valid values for the <b>type</b> parameter are: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as it's <b>Source ID</b>(source_data_identifier)<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"/></a><br>Unfortunately this value can get clipped in the UI. Instead use the download button to download the container json and extract the source_data_identifier key value<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"/></a><br></li><li>The <b>sensorid</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;.pcap</li></ul>",
             "parameters": {
                 "type": {
                     "data_type": "string",
@@ -186,7 +186,7 @@
                     "data_type": "string"
                 },
                 {
-                    "data_path": "action_result.parameter.sensor_id",
+                    "data_path": "action_result.parameter.sensorid",
                     "data_type": "string",
                     "contains": [
                         "protectwise sensor id"
