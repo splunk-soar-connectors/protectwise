@@ -1,16 +1,8 @@
-# --
 # File: protectwise_connector.py
+# Copyright (c) 2016-2018 Splunk Inc.
 #
-# Copyright (c) Phantom Cyber Corporation, 2016-2018
-#
-# This unpublished material is proprietary to Phantom Cyber.
-# All rights reserved. The methods and
-# techniques described herein are considered trade secrets
-# and/or confidential. Reproduction or distribution, in whole
-# or in part, is forbidden except by express written permission
-# of Phantom Cyber Corporation.
-#
-# --
+# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
+# without a valid written license from Splunk Inc. is PROHIBITED.
 
 # Phantom imports
 import time
@@ -56,6 +48,8 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
+        self._display_dup_artifacts = config[PW_JSON_ALLOW_ARTIFACT_DUPLICATES]
+        self._display_dup_containers = config[PW_JSON_ALLOW_CONTAINER_DUPLICATES]
 
         return phantom.APP_SUCCESS
 
@@ -601,6 +595,9 @@ class ProtectWiseConnector(BaseConnector):
                 cef['observationId'] = observation['id']
                 cef['sensorId'] = observation['sensorId']
 
+            if self._display_dup_artifacts is True:
+                cef['receiptTime'] = self._get_str_from_epoch(int(round(time.time() * 1000)))
+
             artifacts.append(artifact)
 
         return artifacts
@@ -687,6 +684,9 @@ class ProtectWiseConnector(BaseConnector):
 
             container['data'] = event
             container['source_data_identifier'] = event['id']
+            if self._display_dup_containers is True:
+                container['source_data_identifier'] = "{} container_created:{}".format(container['source_data_identifier'],
+                                                        self._get_str_from_epoch(int(round(time.time() * 1000))))
             container['name'] = event['message']
             container['start_time'] = self._get_str_from_epoch(event['startedAt'])
             container['end_time'] = self._get_str_from_epoch(event['endedAt'])
@@ -750,23 +750,65 @@ class ProtectWiseConnector(BaseConnector):
 
 
 if __name__ == '__main__':
-    """ This section is executed when run in standalone debug mode """
 
-    import sys
     import pudb
+    import argparse
 
     pudb.set_trace()
 
-    with open(sys.argv[1]) as f:
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument('input_test_json', help='Input Test JSON file')
+    argparser.add_argument('-', '--username', help='username', required=False)
+    argparser.add_argument('-p', '--password', help='password', required=False)
+
+    args = argparser.parse_args()
+    session_id = None
+
+    username = args.username
+    password = args.password
+
+    if (username is not None and password is None):
+
+        # User specified a username but not a password, so ask
+        import getpass
+        password = getpass.getpass("Password: ")
+
+    if (username and password):
+        try:
+            print ("Accessing the Login page")
+            r = requests.get("https://127.0.0.1/login", verify=False)
+            csrftoken = r.cookies['csrftoken']
+
+            data = dict()
+            data['username'] = username
+            data['password'] = password
+            data['csrfmiddlewaretoken'] = csrftoken
+
+            headers = dict()
+            headers['Cookie'] = 'csrftoken=' + csrftoken
+            headers['Referer'] = 'https://127.0.0.1/login'
+
+            print ("Logging into Platform to get the session id")
+            r2 = requests.post("https://127.0.0.1/login", verify=False, data=data, headers=headers)
+            session_id = r2.cookies['sessionid']
+        except Exception as e:
+            print ("Unable to get session id from the platfrom. Error: " + str(e))
+            exit(1)
+
+    with open(args.input_test_json) as f:
         in_json = f.read()
         in_json = json.loads(in_json)
+        print(json.dumps(in_json, indent=4))
 
         connector = ProtectWiseConnector()
-
         connector.print_progress_message = True
 
-        ret_val = connector._handle_action(json.dumps(in_json), None)
+        if (session_id is not None):
+            in_json['user_session_token'] = session_id
+            connector._set_csrf_info(csrftoken, headers['Referer'])
 
-        print ret_val
+        ret_val = connector._handle_action(json.dumps(in_json), None)
+        print (json.dumps(json.loads(ret_val), indent=4))
 
     exit(0)

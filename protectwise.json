@@ -11,10 +11,10 @@
     "product_name": "ProtectWise",
     "product_vendor": "ProtectWise",
     "product_version_regex": ".*",
-    "min_phantom_version": "3.0.247",
+    "min_phantom_version": "3.5.180",
     "logo": "logo_protectwise.svg",
     "logo_dark": "logo_protectwise_dark.svg",
-    "license": "Copyright (c) Phantom Cyber Corporation, 2016-2018",
+    "license": "Copyright (c) 2016-2018 Splunk Inc.",
     "configuration": {
         "auth_token": {
             "description": "Authentication Token",
@@ -41,6 +41,20 @@
             "order": 3,
             "description": "Ingest events in last N hours (Poll Now and First Run)",
             "default": 1,
+            "required": false
+        },
+        "allow_duplicate_artifacts": {
+            "data_type": "boolean",
+            "order": 4,
+            "description": "Display duplicate artifacts from polling",
+            "default": false,
+            "required": false
+        },
+        "allow_duplicate_containers": {
+            "data_type": "boolean",
+            "order": 5,
+            "description": "Display duplicate containers from polling",
+            "default": false,
             "required": false
         }
     },
