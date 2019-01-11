@@ -190,7 +190,7 @@ class ProtectWiseConnector(BaseConnector):
         file_name = "{0}.pcap".format(object_id)
 
         if hasattr(Vault, 'get_vault_tmp_dir'):
-            tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir(), delete=False)
+            tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir())
         else:
             tmp = tempfile.NamedTemporaryFile(dir="/vault/tmp/", delete=False)
 
