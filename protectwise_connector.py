@@ -1,5 +1,5 @@
 # File: protectwise_connector.py
-# Copyright (c) 2016-2018 Splunk Inc.
+# Copyright (c) 2016-2019 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -17,6 +17,7 @@ from protectwise_consts import *
 import requests
 import json
 import os
+import tempfile
 from datetime import datetime
 from datetime import timedelta
 
@@ -188,13 +189,16 @@ class ProtectWiseConnector(BaseConnector):
         # Now download the file
         file_name = "{0}.pcap".format(object_id)
 
-        local_file_path = "/vault/tmp/{0}".format(file_name)
+        if hasattr(Vault, 'get_vault_tmp_dir'):
+            tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir())
+        else:
+            tmp = tempfile.NamedTemporaryFile(dir="/vault/tmp/", delete=False)
 
         params = {'filename': file_name}
 
         estimated_size = file_info.get('estimatedSize', None)
 
-        ret_val = self._download_file(file_endpoint, action_result, local_file_path, params, estimated_size)
+        ret_val = self._download_file(file_endpoint, action_result, tmp.name, params, estimated_size)
 
         if (phantom.is_fail(ret_val)):
             return action_result.get_status()
@@ -211,7 +215,7 @@ class ProtectWiseConnector(BaseConnector):
         vault_ret = {}
 
         try:
-            vault_ret = Vault.add_attachment(local_file_path, self.get_container_id(), file_name, vault_attach_dict)
+            vault_ret = Vault.add_attachment(tmp.name, self.get_container_id(), file_name, vault_attach_dict)
         except Exception as e:
             self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
             return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
@@ -775,9 +779,10 @@ if __name__ == '__main__':
         password = getpass.getpass("Password: ")
 
     if (username and password):
+        login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
             print ("Accessing the Login page")
-            r = requests.get("https://127.0.0.1/login", verify=False)
+            r = requests.get(login_url, verify=False)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -787,10 +792,10 @@ if __name__ == '__main__':
 
             headers = dict()
             headers['Cookie'] = 'csrftoken=' + csrftoken
-            headers['Referer'] = 'https://127.0.0.1/login'
+            headers['Referer'] = login_url
 
             print ("Logging into Platform to get the session id")
-            r2 = requests.post("https://127.0.0.1/login", verify=False, data=data, headers=headers)
+            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
             session_id = r2.cookies['sessionid']
         except Exception as e:
             print ("Unable to get session id from the platfrom. Error: " + str(e))
