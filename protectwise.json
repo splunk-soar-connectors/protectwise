@@ -18,7 +18,7 @@
     "configuration": {
         "auth_token": {
             "description": "Authentication Token",
-            "data_type": "string",
+            "data_type": "password",
             "order": 0,
             "required": true
         },
