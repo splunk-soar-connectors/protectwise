@@ -49,8 +49,8 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
-        self._display_dup_artifacts = config[PW_JSON_ALLOW_ARTIFACT_DUPLICATES]
-        self._display_dup_containers = config[PW_JSON_ALLOW_CONTAINER_DUPLICATES]
+        self._display_dup_artifacts = config.get(PW_JSON_ALLOW_ARTIFACT_DUPLICATES)
+        self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
 
         return phantom.APP_SUCCESS
 
