@@ -1,5 +1,5 @@
 # File: protectwise_consts.py
-# Copyright (c) 2016-2019 Splunk Inc.
+# Copyright (c) 2016-2021 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -31,3 +31,10 @@ PW_CEF_CONTAINS = {
     "sensorId": ["protectwise sensor id"]}
 VALID_PW_TYPES = ["event", "observation"]
 PW_N_DAYS_HOURS = (5 * 24)
+
+# actions that this app supports
+ACTION_ID_GET_PACKETS = 'get_packets'
+ACTION_ID_HUNT_IP = 'hunt_ip'
+ACTION_ID_HUNT_DOMAIN = 'hunt_domain'
+ACTION_ID_HUNT_FILE = 'hunt_file'
+ACTION_ID_TEST_ASSET_CONNECTIVITY = 'test_asset_connectivity'
