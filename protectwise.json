@@ -2,19 +2,23 @@
     "appid": "e8f8d8dc-916f-4267-be15-e9b697dd58c5",
     "name": "ProtectWise",
     "description": "This app integrates with the ProtectWise cloud platform to implement ingestion and investigative actions",
-    "publisher": "Phantom",
+    "publisher": "Splunk",
     "type": "siem",
-    "main_module": "protectwise_connector.pyc",
-    "app_version": "1.0.32",
+    "main_module": "protectwise_connector.py",
+    "app_version": "2.0.0",
     "utctime_updated": "2019-01-19T02:07:30.000000Z",
     "package_name": "phantom_protectwise",
     "product_name": "ProtectWise",
     "product_vendor": "ProtectWise",
     "product_version_regex": ".*",
-    "min_phantom_version": "4.0.1068",
+    "min_phantom_version": "4.9.39220",
+    "latest_tested_versions": [
+        "ProtectWise API v1 06/10/2021"
+    ],
+    "python_version": "3",
     "logo": "logo_protectwise.svg",
     "logo_dark": "logo_protectwise_dark.svg",
-    "license": "Copyright (c) 2016-2019 Splunk Inc.",
+    "license": "Copyright (c) 2016-2021 Splunk Inc.",
     "configuration": {
         "auth_token": {
             "description": "Authentication Token",
@@ -32,7 +36,7 @@
         "first_run_max_events": {
             "data_type": "numeric",
             "order": 2,
-            "description": "Maximum events to poll first time",
+            "description": "Maximum events to poll the first time (For scheduled polling)",
             "default": 2000,
             "required": true
         },
@@ -41,28 +45,25 @@
             "order": 3,
             "description": "Ingest events in last N hours (Poll Now and First Run)",
             "default": 1,
-            "required": false
+            "required": true
         },
         "allow_duplicate_artifacts": {
             "data_type": "boolean",
             "order": 4,
             "description": "Display duplicate artifacts from polling",
-            "default": false,
-            "required": false
+            "default": false
         },
         "allow_duplicate_containers": {
             "data_type": "boolean",
             "order": 5,
             "description": "Display duplicate containers from polling",
-            "default": false,
-            "required": false
+            "default": false
         }
     },
     "actions": [
         {
             "action": "test connectivity",
             "description": "Validate the asset configuration for connectivity",
-            "verbose": "This action uses the unique access ID and access key to send a request to the Sumo Logic API to retrieve a single collector.",
             "type": "test",
             "identifier": "test_asset_connectivity",
             "read_only": true,
@@ -76,7 +77,7 @@
             "type": "investigate",
             "identifier": "get_packets",
             "read_only": true,
-            "verbose": "A few things to note:<ul><li>Valid values for the <b>type</b> parameter are: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as it's <b>Source ID</b>(source_data_identifier)<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"/></a><br>Unfortunately this value can get clipped in the UI. Instead use the download button to download the container json and extract the source_data_identifier key value<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"/></a><br></li><li>The <b>sensorid</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;.pcap</li></ul>",
+            "verbose": "A few things to note:<ul><li>Valid values for the <b>type</b> parameter are: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as its <b>Source ID</b>(source_data_identifier)<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi.png\"/></a><br>Unfortunately, this value can get clipped in the UI. Instead, use the download button to download the container json and extract the source_data_identifier key value<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/sdi2.png\"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"><img src=\"/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/artifact.png\"/></a><br></li><li>The <b>sensorid</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;.pcap</li></ul>",
             "parameters": {
                 "type": {
                     "data_type": "string",
@@ -107,7 +108,6 @@
                     "contains": [
                         "protectwise sensor id"
                     ],
-                    "required": false,
                     "primary": true
                 }
             },
@@ -121,7 +121,11 @@
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.id",
@@ -129,6 +133,9 @@
                     "contains": [
                         "protectwise event id",
                         "protectwise observation id"
+                    ],
+                    "example_values": [
+                        "0005c39404209a9874014a71c6e384a16aa520474614f1a7ca781955"
                     ]
                 },
                 {
@@ -136,11 +143,18 @@
                     "data_type": "string",
                     "contains": [
                         "protectwise sensor id"
+                    ],
+                    "example_values": [
+                        "3100"
                     ]
                 },
                 {
                     "data_path": "action_result.parameter.type",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "Event",
+                        "Observation"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.estimatedSize",
@@ -227,7 +241,7 @@
         {
             "action": "hunt ip",
             "description": "Hunt an IP in the network",
-            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
+            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>start_time</b> is not specified and <b>end_time</b> is, the app will throw an error</li></ul>",
             "type": "investigate",
             "identifier": "hunt_ip",
             "read_only": true,
@@ -236,7 +250,8 @@
                     "data_type": "string",
                     "order": 0,
                     "contains": [
-                        "ip"
+                        "ip",
+                        "ipv6"
                     ],
                     "description": "IP Address",
                     "required": true,
@@ -249,14 +264,12 @@
                 "start_time": {
                     "data_type": "string",
                     "order": 2,
-                    "description": "Start time (Zulu format)",
-                    "required": false
+                    "description": "Start time (Zulu format)"
                 },
                 "end_time": {
                     "data_type": "string",
                     "order": 3,
-                    "description": "End time (Zulu format)",
-                    "required": false
+                    "description": "End time (Zulu format)"
                 }
             },
             "render": {
@@ -268,24 +281,38 @@
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.end_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.ip",
                     "data_type": "string",
                     "contains": [
-                        "ip"
+                        "ip",
+                        "ipv6"
+                    ],
+                    "example_values": [
+                        "8.8.8.8"
                     ],
                     "column_name": "IP",
                     "column_order": 0
                 },
                 {
                     "data_path": "action_result.parameter.start_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.ip.host",
@@ -1324,7 +1351,7 @@
         {
             "action": "hunt domain",
             "description": "Hunt a domain in the network",
-            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
+            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>start_time</b> is not specified and <b>end_time</b> is, the app will throw an error</li></ul>",
             "type": "investigate",
             "identifier": "hunt_domain",
             "read_only": true,
@@ -1346,14 +1373,12 @@
                 "start_time": {
                     "data_type": "string",
                     "order": 2,
-                    "description": "Start time (Zulu format)",
-                    "required": false
+                    "description": "Start time (Zulu format)"
                 },
                 "end_time": {
                     "data_type": "string",
                     "order": 3,
-                    "description": "End time (Zulu format)",
-                    "required": false
+                    "description": "End time (Zulu format)"
                 }
             },
             "render": {
@@ -1365,7 +1390,11 @@
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.domain",
@@ -1373,16 +1402,25 @@
                     "contains": [
                         "domain"
                     ],
+                    "example_values": [
+                        "test.com"
+                    ],
                     "column_order": 0,
                     "column_name": "Domain"
                 },
                 {
                     "data_path": "action_result.parameter.end_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.start_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "data_path": "action_result.data.*.domain.resolveData.*.firstSeen",
@@ -1482,7 +1520,7 @@
         {
             "action": "hunt file",
             "description": "Hunt for a file in the network",
-            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take the time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ for e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>end_time</b> is not specified and <b>start_time</b> is, the app will throw an error</li></ul>",
+            "verbose": "To get info within a time range specify the <b>start_time</b> and <b>end_time</b>. These parameters take time in the Zulu format which can be expressed as %Y-%m-%dT%H:%M:%S.%fZ e.g. 2016-12-30T13:00:00.0000Z.<br><ul><li>If <b>start_time</b> and <b>end_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start_time</b> is specified and <b>end_time</b> is not, then the app will default the <b>end_time</b> to <i>current</i></li><li>If <b>start_time</b> is not specified and <b>end_time</b> is, the app will throw an error</li></ul>",
             "type": "investigate",
             "identifier": "hunt_file",
             "read_only": true,
@@ -1491,7 +1529,6 @@
                     "data_type": "string",
                     "order": 0,
                     "contains": [
-                        "hash",
                         "sha256"
                     ],
                     "description": "File Hash",
@@ -1505,14 +1542,12 @@
                 "start_time": {
                     "data_type": "string",
                     "order": 2,
-                    "description": "Start time (Zulu format)",
-                    "required": false
+                    "description": "Start time (Zulu format)"
                 },
                 "end_time": {
                     "data_type": "string",
                     "order": 3,
-                    "description": "End time (Zulu format)",
-                    "required": false
+                    "description": "End time (Zulu format)"
                 }
             },
             "render": {
@@ -1525,23 +1560,35 @@
             "output": [
                 {
                     "data_path": "action_result.status",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "success",
+                        "failed"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.end_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "contains": [
-                        "hash",
                         "sha256"
                     ],
                     "data_path": "action_result.parameter.hash",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "e3545e19f5f74d733306991ce232ad4ee7556ca1c47cb07740dda148be3d05c2"
+                    ]
                 },
                 {
                     "data_path": "action_result.parameter.start_time",
-                    "data_type": "string"
+                    "data_type": "string",
+                    "example_values": [
+                        "2016-12-30T13:00:00.0000Z"
+                    ]
                 },
                 {
                     "contains": [
@@ -1554,7 +1601,8 @@
                     "data_path": "action_result.data.*.behavior.network.dns.*.ip",
                     "data_type": "string",
                     "contains": [
-                        "ip"
+                        "ip",
+                        "ipv6"
                     ]
                 },
                 {
@@ -1608,7 +1656,8 @@
                     "data_path": "action_result.data.*.behavior.network.tcp.*.dst",
                     "data_type": "string",
                     "contains": [
-                        "ip"
+                        "ip",
+                        "ipv6"
                     ]
                 },
                 {
@@ -1622,7 +1671,8 @@
                     "data_path": "action_result.data.*.behavior.network.tcp.*.src",
                     "data_type": "string",
                     "contains": [
-                        "ip"
+                        "ip",
+                        "ipv6"
                     ]
                 },
                 {
@@ -2018,30 +2068,28 @@
                 "container_id": {
                     "data_type": "string",
                     "order": 0,
-                    "description": "Container IDs to limit the ingestion to.",
+                    "description": "Container IDs to limit the ingestion to",
                     "allow_list": true
                 },
                 "start_time": {
                     "data_type": "numeric",
                     "order": 1,
-                    "description": "Start of time range, in epoch time (milliseconds)",
-                    "verbose": "If not specified, the default is past 10 days"
+                    "description": "Start of time range, in epoch time (milliseconds), if not specified, the default is past 10 days"
                 },
                 "end_time": {
                     "data_type": "numeric",
                     "order": 2,
-                    "description": "End of time range, in epoch time (milliseconds)",
-                    "verbose": "If not specified, the default is now"
+                    "description": "End of time range, in epoch time (milliseconds), if not specified, the default is now"
                 },
                 "container_count": {
                     "data_type": "numeric",
                     "order": 3,
-                    "description": "Maximum number of container records to query for."
+                    "description": "Maximum number of container records to query for"
                 },
                 "artifact_count": {
                     "data_type": "numeric",
                     "order": 4,
-                    "description": "Maximum number of artifact records to query for."
+                    "description": "Maximum number of artifact records to query for"
                 }
             },
             "output": [],

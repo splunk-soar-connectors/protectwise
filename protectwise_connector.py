@@ -1,5 +1,5 @@
 # File: protectwise_connector.py
-# Copyright (c) 2016-2019 Splunk Inc.
+# Copyright (c) 2016-2021 Splunk Inc.
 #
 # SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
 # without a valid written license from Splunk Inc. is PROHIBITED.
@@ -11,6 +11,7 @@ import phantom.app as phantom
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
+import phantom.rules as ph_rules
 
 from protectwise_consts import *
 
@@ -24,13 +25,6 @@ from datetime import timedelta
 
 class ProtectWiseConnector(BaseConnector):
 
-    # List of all the actions that this app supports
-    ACTION_ID_GET_PACKETS = 'get_packets'
-    ACTION_ID_HUNT_IP = 'hunt_ip'
-    ACTION_ID_HUNT_DOMAIN = 'hunt_domain'
-    ACTION_ID_HUNT_FILE = 'hunt_file'
-    ACTION_ID_TEST_ASSET_CONNECTIVITY = 'test_asset_connectivity'
-
     def __init__(self):
 
         # Call the super class
@@ -41,6 +35,14 @@ class ProtectWiseConnector(BaseConnector):
         self._base_url = PW_BASE_URL
 
         self._state = {}
+    
+    def is_positive_non_zero_int(self, value):
+        try:
+            value = int(value)
+            return True if value > 0 else False
+        except Exception:
+            return False
+
 
     def initialize(self):
 
@@ -212,24 +214,17 @@ class ProtectWiseConnector(BaseConnector):
         vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
         vault_attach_dict['contains'] = ['pcap']
 
-        vault_ret = {}
-
         try:
-            vault_ret = Vault.add_attachment(tmp.name, self.get_container_id(), file_name, vault_attach_dict)
+            success, message, vault_id = ph_rules.vault_add(self.get_container_id(), tmp.name, file_name, vault_attach_dict)
         except Exception as e:
             self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
             return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
 
-        # self.debug_print("vault_ret_dict", vault_ret_dict)
+        if (not success):
+            self.debug_print("Failed to add file to Vault: {0}".format(message))
+            return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault: {}".format(message))
 
-        if (not vault_ret.get('succeeded')):
-            self.debug_print("Failed to add file to Vault: {0}".format(json.dumps(vault_ret)))
-            return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault")
-
-        vault_ret['file_name'] = file_name
-        file_info['vault_info'] = vault_ret
-
-        action_result.set_summary({'vault_id': vault_ret['vault_id']})
+        action_result.set_summary({'vault_id': vault_id})
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -314,7 +309,7 @@ class ProtectWiseConnector(BaseConnector):
         summary['file_type'] = info.get('type')
         summary['id'] = info.get('id')
         summary['detected_type'] = info.get('detectedType')
-        summary['observation_count'] = response.get('observations', {}).get('count')
+        summary['observation_count'] = response.get('observations', {}).get('count', 0)
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -351,6 +346,8 @@ class ProtectWiseConnector(BaseConnector):
             summary.update({'domain_organization': domain_info.get('organization', '')})
         if (events):
             summary.update({'event_count': events.get('count', {}).get('total', '')})
+        else:
+            summary.update({'event_count': 0})
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
@@ -387,15 +384,21 @@ class ProtectWiseConnector(BaseConnector):
             summary.update({'ip_organization': ip_info.get('organization', '')})
         if (events):
             summary.update({'event_count': events.get('count', {}).get('total', '')})
+        else:
+            summary.update({'event_count': 0})
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _get_first_start_time(self):
+    def _get_first_start_time(self, action_result):
 
         config = self.get_config()
 
         # Get the poll hours
         poll_hours = config[PW_JSON_POLL_HOURS]
+
+        if not self.is_positive_non_zero_int(poll_hours):
+            self.save_progress("Please provide a positive integer in 'Ingest events in last N hours'")
+            return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Ingest events in last N hours'"), None
 
         # get the start time to use, i.e. current - poll hours in seconds
         start_time = int(time.time() - (int(poll_hours) * (60 * 60)))
@@ -403,30 +406,52 @@ class ProtectWiseConnector(BaseConnector):
         # convert it to milliseconds
         start_time = start_time * 1000
 
-        return start_time
+        return phantom.APP_SUCCESS, start_time
 
     def _time_now(self):
         return int(time.time() * 1000)
 
-    def _get_query_params(self, param):
+    def _get_query_params(self, param, action_result):
 
         # function to separate on poll and poll now
         config = self.get_config()
+
         limit = config[PW_JSON_MAX_CONTAINERS]
+        
+        if not self.is_positive_non_zero_int(limit):
+            self.save_progress("Please provide a positive integer in 'Maximum events for scheduled polling'")
+            return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
+
         query_params = dict()
         last_time = self._state.get(PW_JSON_LAST_DATE_TIME)
 
         if self.is_poll_now():
             limit = param.get("container_count", 100)
-            query_params["start"] = self._get_first_start_time()
+            ret_val, query_params["start"] = self._get_first_start_time(action_result)
+            
+            if (phantom.is_fail(ret_val)):
+                return action_result.get_status(), None
+        
         elif (self._state.get('first_run', True)):
             self._state['first_run'] = False
             limit = config.get("first_run_max_events", 100)
-            query_params["start"] = self._get_first_start_time()
+
+            if not self.is_positive_non_zero_int(limit):
+                self.save_progress("Please provide a positive integer in 'Maximum events to poll first time'")
+                return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events to poll first time'"), None
+            ret_val, query_params["start"] = self._get_first_start_time(action_result)
+
+            if (phantom.is_fail(ret_val)):
+                return action_result.get_status(), None
+        
         elif (last_time):
             query_params["start"] = last_time
+        
         else:
-            query_params["start"] = self._get_first_start_time()
+            ret_val, query_params["start"] = self._get_first_start_time(action_result)
+
+            if (phantom.is_fail(ret_val)):
+                return action_result.get_status(), None
 
         query_params["maxLimit"] = limit
         query_params["minLimit"] = limit
@@ -435,7 +460,7 @@ class ProtectWiseConnector(BaseConnector):
         if (not self.is_poll_now()):
             self._state[PW_JSON_LAST_DATE_TIME] = query_params["end"]
 
-        return query_params
+        return phantom.APP_SUCCESS, query_params
 
     def _get_artifact_name(self, observation):
 
@@ -608,7 +633,7 @@ class ProtectWiseConnector(BaseConnector):
 
     def _get_str_from_epoch(self, epoch_milli):
         # 2015-07-21T00:27:59Z
-        return datetime.fromtimestamp(long(epoch_milli) / 1000.0).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        return datetime.fromtimestamp(int(epoch_milli) / 1000.0).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
 
     def _save_results(self, results):
 
@@ -663,10 +688,14 @@ class ProtectWiseConnector(BaseConnector):
 
     def _on_poll(self, param):
 
-        # Get the requests based on the type of poll
-        query_params = self._get_query_params(param)
-
         action_result = ActionResult(param)
+
+        # Get the requests based on the type of poll
+        ret_val, query_params = self._get_query_params(param, action_result)
+
+        if (phantom.is_fail(ret_val)):
+            return action_result.get_status()
+
         ret_val, resp_json = self._make_rest_call('/events', action_result, params=query_params)
 
         if (phantom.is_fail(ret_val)):
@@ -739,15 +768,15 @@ class ProtectWiseConnector(BaseConnector):
             diff_time = end_time - start_time
             human_time = str(timedelta(seconds=int(diff_time)))
             self.save_progress("Time taken: {0}".format(human_time))
-        elif (action == self.ACTION_ID_TEST_ASSET_CONNECTIVITY):
+        elif (action == ACTION_ID_TEST_ASSET_CONNECTIVITY):
             result = self._test_connectivity(param)
-        elif (action == self.ACTION_ID_GET_PACKETS):
+        elif (action == ACTION_ID_GET_PACKETS):
             result = self._get_packets(param)
-        elif (action == self.ACTION_ID_HUNT_IP):
+        elif (action == ACTION_ID_HUNT_IP):
             result = self._hunt_ip(param)
-        elif (action == self.ACTION_ID_HUNT_DOMAIN):
+        elif (action == ACTION_ID_HUNT_DOMAIN):
             result = self._hunt_domain(param)
-        elif (action == self.ACTION_ID_HUNT_FILE):
+        elif (action == ACTION_ID_HUNT_FILE):
             result = self._hunt_file(param)
 
         return result
@@ -781,7 +810,7 @@ if __name__ == '__main__':
     if (username and password):
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
-            print ("Accessing the Login page")
+            print("Accessing the Login page")
             r = requests.get(login_url, verify=False)
             csrftoken = r.cookies['csrftoken']
 
@@ -794,11 +823,11 @@ if __name__ == '__main__':
             headers['Cookie'] = 'csrftoken=' + csrftoken
             headers['Referer'] = login_url
 
-            print ("Logging into Platform to get the session id")
+            print("Logging into Platform to get the session id")
             r2 = requests.post(login_url, verify=False, data=data, headers=headers)
             session_id = r2.cookies['sessionid']
         except Exception as e:
-            print ("Unable to get session id from the platfrom. Error: " + str(e))
+            print("Unable to get session id from the platfrom. Error: " + str(e))
             exit(1)
 
     with open(args.input_test_json) as f:
@@ -814,6 +843,6 @@ if __name__ == '__main__':
             connector._set_csrf_info(csrftoken, headers['Referer'])
 
         ret_val = connector._handle_action(json.dumps(in_json), None)
-        print (json.dumps(json.loads(ret_val), indent=4))
+        print(json.dumps(json.loads(ret_val), indent=4))
 
     exit(0)
