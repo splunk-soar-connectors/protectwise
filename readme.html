@@ -1,5 +1,5 @@
 <!-- File: readme.html
-  Copyright (c) 2016-2019 Splunk Inc.
+  Copyright (c) 2016-2021 Splunk Inc.
 
   SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
   without a valid written license from Splunk Inc. is PROHIBITED.
@@ -11,38 +11,20 @@
     <p>
     The first thing to do is create the ProtectWise asset in Phantom.
     <br>
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/asset_settings.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/asset_settings.png"/>
-    </a>
-    </p>
-    <p>
-    <br>
+    
     It's good practice to set the Label of the objects from this source to a <b>NEW ENTRY</b> called <b>Event</b>.
     <br>
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/ingest_settings.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/ingest_settings.png"/>
-    </a>
-    <p>
+   
     Once the asset is saved, run Test Connectivity and make sure it passes.
     <br>
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/test_connectivity.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/test_connectivity.png"/>
-    </a>
-    </p>
-    <p>
+   
     The Test connection action is successful only when the session is created and the REST API call is made successfully.
     <br>
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/test_connectivity_failed.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/test_connectivity_failed.png"/>
-    </a>
-    </p>
-    <p>
+    
 <h2>Containers created</h2>
   The app will create a single container for each Event that it ingests from ProtectWise.
     <br>
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/container_list.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/container_list.png"/>
-      </a><br>
+    
 <h2>Event Artifact</h2>
   Every Event in ProtectWise is made up of Observations. Each Observation is ingested and added as an Artifact into the created Container.
     </a>
@@ -51,28 +33,25 @@
     </a>
     <br>
     <br>
-      The fields that are present in the artifact greatly depend upon the type of the Observation that was ingested. Different Observation will have different types of values in the artifacts.
-    <a href="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/observation_artifact.png">
-        <img src="/app_resource/protectwise_e8f8d8dc-916f-4267-be15-e9b697dd58c5/img/observation_artifact.png"/>
-    </a>
-    <br>
+      The fields that are present in the artifact greatly depend upon the type of Observation that was ingested. Different Observations will have different types of values in the artifacts.
+    
     <br>
     The app supports two modes of ingestion, let's discuss the differences between them.
 <h2>POLL NOW</h2>
     <p>
-    POLL NOW should be used to get a sense of the containers and artifacts that are created by the app. The POLL NOW dialog allows the user to set the "Maximum containers" that should be ingested at this instance. Since a single container is created for each event, this value equates to the maximum events that are ingested by the app. The app will fetch the events in the order they were created in ProtectWise. Time interval can be configured in hours using the <b>poll_hours</b> asset config, For e.g. to ingest events that have been generated in the last 2 hours, configure this value to be 2. However the query to ingest this data can be quite time consuming.
+    POLL NOW should be used to get a sense of the containers and artifacts that are created by the app. The POLL NOW dialog allows the user to set the "Maximum containers" that should be ingested at this instance. Since a single container is created for each event, this value equates to the maximum events that are ingested by the app. The app will fetch the events in the order they were created in ProtectWise. The time interval can be configured in hours using the <b>poll_hours</b> asset config, E.g. to ingest events that have been generated in the last 2 hours, configure this value to be 2. However, the query to ingest this data can be quite time-consuming.
     </p>
 <h2>Scheduled Polling</h2>
     <p>
        This mode is used to schedule a polling action on the asset at regular intervals, which is configured via the INGEST SETTINGS tab of the asset. It makes use of the following asset configuration parameters (among others):
 
     <ul>
-    <li>Maximum events to poll first time</li>
+    <li>Maximum events to poll the first time</li>
     The app detects the first time it is polling an asset and will ingest this number of events (at the most). It will also use the <b>poll_hours</b> value.
     <li>Maximum Containers for scheduled polling</li>
-        For all scheduled polls after the first, the app will ingest these number of events.
+        For all scheduled polls after the first, the app will ingest this number of events.
     </ul>
-    <p>In case of Scheduled Polling, on every poll, the app remembers the time of the last event that it has ingested and will pickup from the same time in the next polling cycle.
+    <p>In case of Scheduled Polling, on every poll, the app remembers the time of the last event that it has ingested and will pick up from the same time in the next polling cycle.
     For best results, keep the poll interval and <i>Maximum  Containers for scheduled polling</i> values close to the number of events you would get within a time interval. This way, every poll will end up ingesting all the new events.<br>
-    It is also very important that the <i>Maximum Container for scheduled  polling</i> configured should be greater than maximum events that are generated <b>per second</b>. If the app detects it got the maximum configured events and all occurred in the same second, it will start polling from the next second in the next polling cycle.
+    It is also very important that the <i>Maximum Container for scheduled  polling</i> configured should be greater than the maximum events that are generated <b>per second</b>. If the app detects it got the maximum configured events and all occurred in the same second, it will start polling from the next second in the next polling cycle.
     </p>
