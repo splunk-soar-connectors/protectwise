@@ -45,14 +45,13 @@ class ProtectWiseConnector(BaseConnector):
         self._base_url = PW_BASE_URL
 
         self._state = {}
-    
+
     def is_positive_non_zero_int(self, value):
         try:
             value = int(value)
             return True if value > 0 else False
         except Exception:
             return False
-
 
     def initialize(self):
 
@@ -427,7 +426,7 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         limit = config[PW_JSON_MAX_CONTAINERS]
-        
+
         if not self.is_positive_non_zero_int(limit):
             self.save_progress("Please provide a positive integer in 'Maximum events for scheduled polling'")
             return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
@@ -438,10 +437,10 @@ class ProtectWiseConnector(BaseConnector):
         if self.is_poll_now():
             limit = param.get("container_count", 100)
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
-            
+
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
+
         elif (self._state.get('first_run', True)):
             self._state['first_run'] = False
             limit = config.get("first_run_max_events", 100)
@@ -453,10 +452,10 @@ class ProtectWiseConnector(BaseConnector):
 
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
+
         elif (last_time):
             query_params["start"] = last_time
-        
+
         else:
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
@@ -760,9 +759,9 @@ class ProtectWiseConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if (len(date_strings) == 1):
-                self.debug_print("Getting all containers with the same date, down to the millisecond." +
-                        " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS]) +
-                        " Skipping to the next second to not get stuck.")
+                self.debug_print("Getting all containers with the same date, down to the millisecond."
+                        + " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS])
+                        + " Skipping to the next second to not get stuck.")
                 self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
