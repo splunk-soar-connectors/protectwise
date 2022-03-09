@@ -73,10 +73,11 @@ class ProtectWiseConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS, resp_json)
 
-    def _make_rest_call(self, endpoint, action_result, headers={}, params=None, data=None, method="get", exception_error_codes=[]):
+    def _make_rest_call(self, endpoint, action_result, headers=None, params=None, data=None, method="get", exception_error_codes=[]):
         """ Function that makes the REST call to the device, generic function that can be called from various action handlers
         Needs to return two values, 1st the phantom.APP_[SUCCESS|ERROR], 2nd the response
         """
+        if headers is None: headers = {}
 
         # Get the config
         config = self.get_config()
@@ -758,8 +759,8 @@ class ProtectWiseConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if (len(date_strings) == 1):
-                self.debug_print("Getting all containers with the same date, down to the millisecond." \
-                    " That means the device is generating" \
+                self.debug_print("Getting all containers with the same date, down to the millisecond."
+                    " That means the device is generating"
                     " max_containers=({0}) per second. Skipping to the next second to not get stuck.".format(config[PW_JSON_MAX_CONTAINERS]))
                 self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
 
