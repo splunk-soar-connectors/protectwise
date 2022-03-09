@@ -77,7 +77,8 @@ class ProtectWiseConnector(BaseConnector):
         """ Function that makes the REST call to the device, generic function that can be called from various action handlers
         Needs to return two values, 1st the phantom.APP_[SUCCESS|ERROR], 2nd the response
         """
-        if headers is None: headers = {}
+        if headers is None:
+            headers = {}
 
         # Get the config
         config = self.get_config()
