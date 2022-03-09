@@ -51,7 +51,6 @@ class ProtectWiseConnector(BaseConnector):
         except Exception:
             return False
 
-
     def initialize(self):
         self._state = self.load_state()
         config = self.get_config()
@@ -759,9 +758,9 @@ class ProtectWiseConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if (len(date_strings) == 1):
-                self.debug_print("Getting all containers with the same date, down to the millisecond."
-                    + " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS])
-                    + " Skipping to the next second to not get stuck.")
+                self.debug_print("Getting all containers with the same date, down to the millisecond." +
+                    " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS]) +
+                    " Skipping to the next second to not get stuck.")
                 self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
