@@ -15,22 +15,20 @@
 #
 #
 # Phantom imports
-import time
-
-import phantom.app as phantom
-from phantom.action_result import ActionResult
-from phantom.base_connector import BaseConnector
-from phantom.vault import Vault
-import phantom.rules as ph_rules
-
-from protectwise_consts import *
-
-import requests
 import json
 import os
 import tempfile
-from datetime import datetime
-from datetime import timedelta
+import time
+from datetime import datetime, timedelta
+
+import phantom.app as phantom
+import phantom.rules as ph_rules
+import requests
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+from phantom.vault import Vault
+
+from protectwise_consts import *
 
 
 class ProtectWiseConnector(BaseConnector):
@@ -45,7 +43,7 @@ class ProtectWiseConnector(BaseConnector):
         self._base_url = PW_BASE_URL
 
         self._state = {}
-    
+
     def is_positive_non_zero_int(self, value):
         try:
             value = int(value)
@@ -53,13 +51,9 @@ class ProtectWiseConnector(BaseConnector):
         except Exception:
             return False
 
-
     def initialize(self):
-
         self._state = self.load_state()
-
         config = self.get_config()
-
         self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
         self._display_dup_artifacts = config.get(PW_JSON_ALLOW_ARTIFACT_DUPLICATES)
         self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
@@ -79,10 +73,12 @@ class ProtectWiseConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS, resp_json)
 
-    def _make_rest_call(self, endpoint, action_result, headers={}, params=None, data=None, method="get", exception_error_codes=[]):
+    def _make_rest_call(self, endpoint, action_result, headers=None, params=None, data=None, method="get", exception_error_codes=[]):
         """ Function that makes the REST call to the device, generic function that can be called from various action handlers
         Needs to return two values, 1st the phantom.APP_[SUCCESS|ERROR], 2nd the response
         """
+        if headers is None:
+            headers = {}
 
         # Get the config
         config = self.get_config()
@@ -117,7 +113,8 @@ class ProtectWiseConnector(BaseConnector):
         if (hasattr(action_result, 'add_debug_data')):
             action_result.add_debug_data({'r_text': r.text if r else 'r is None'})
 
-        # Try a json parse, since most REST API's give back the data in json, if the device does not return JSONs, then need to implement parsing them some other manner
+        # Try a json parse, since most REST API's give back the data in json,
+        # if the device does not return JSONs, then need to implement parsing them some other manner
         try:
             resp_json = r.json()
         except Exception as e:
@@ -257,7 +254,8 @@ class ProtectWiseConnector(BaseConnector):
 
         # handle the case where start time is not given and end time is given
         if (start_time is None and end_time is not None):
-            return (action_result.set_status(phantom.APP_ERROR, "Please specify start_time, it is required if end_time is specified"), None, None)
+            return (action_result.set_status(phantom.APP_ERROR,
+                "Please specify start_time, it is required if end_time is specified"), None, None)
 
         # if start time is specified, process it
         if (start_time):
@@ -284,7 +282,8 @@ class ProtectWiseConnector(BaseConnector):
             end_time = self._time_now()
 
         if (end_time <= start_time):
-            return (action_result.set_status(phantom.APP_ERROR, "Invalid time range, end_time cannot be less than or equal to start_time"), None, None)
+            return (action_result.set_status(phantom.APP_ERROR,
+                "Invalid time range, end_time cannot be less than or equal to start_time"), None, None)
 
         return (phantom.APP_SUCCESS, start_time, end_time)
 
@@ -427,10 +426,11 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         limit = config[PW_JSON_MAX_CONTAINERS]
-        
+
         if not self.is_positive_non_zero_int(limit):
             self.save_progress("Please provide a positive integer in 'Maximum events for scheduled polling'")
-            return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
+            return action_result.set_status(phantom.APP_ERROR,
+                "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
 
         query_params = dict()
         last_time = self._state.get(PW_JSON_LAST_DATE_TIME)
@@ -438,25 +438,25 @@ class ProtectWiseConnector(BaseConnector):
         if self.is_poll_now():
             limit = param.get("container_count", 100)
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
-            
+
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
         elif (self._state.get('first_run', True)):
             self._state['first_run'] = False
             limit = config.get("first_run_max_events", 100)
 
             if not self.is_positive_non_zero_int(limit):
                 self.save_progress("Please provide a positive integer in 'Maximum events to poll first time'")
-                return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events to poll first time'"), None
+                return action_result.set_status(phantom.APP_ERROR,
+                    "Please provide a positive integer in 'Maximum events to poll first time'"), None
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
+
         elif (last_time):
             query_params["start"] = last_time
-        
+
         else:
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
@@ -760,9 +760,9 @@ class ProtectWiseConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if (len(date_strings) == 1):
-                self.debug_print("Getting all containers with the same date, down to the millisecond." +
-                        " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS]) +
-                        " Skipping to the next second to not get stuck.")
+                self.debug_print("Getting all containers with the same date, down to the millisecond."
+                    " That means the device is generating"
+                    " max_containers=({0}) per second. Skipping to the next second to not get stuck.".format(config[PW_JSON_MAX_CONTAINERS]))
                 self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
@@ -794,8 +794,9 @@ class ProtectWiseConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+
+    import pudb
 
     pudb.set_trace()
 
