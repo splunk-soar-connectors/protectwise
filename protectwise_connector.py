@@ -289,6 +289,7 @@ class ProtectWiseConnector(BaseConnector):
 
     def _hunt_file(self, param):
 
+        self.save_progress("Querying hunt file")
         action_result = self.add_action_result(ActionResult(param))
 
         file_hash = param[PW_JSON_HASH]
@@ -320,10 +321,12 @@ class ProtectWiseConnector(BaseConnector):
         summary['detected_type'] = info.get('detectedType')
         summary['observation_count'] = response.get('observations', {}).get('count', 0)
 
+        self.save_progress("Querying hunt file succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_domain(self, param):
 
+        self.save_progress("Querying hunt domain")
         action_result = self.add_action_result(ActionResult(param))
 
         domain = param[PW_JSON_DOMAIN]
@@ -358,10 +361,12 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt domain succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_ip(self, param):
 
+        self.save_progress("Querying hunt ip")
         action_result = self.add_action_result(ActionResult(param))
 
         ip = param[PW_JSON_IP]
@@ -396,6 +401,7 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt ip succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_first_start_time(self, action_result):
