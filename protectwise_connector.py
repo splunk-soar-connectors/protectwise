@@ -22,11 +22,11 @@ import time
 from datetime import datetime, timedelta
 
 import phantom.app as phantom
+import phantom.rules as ph_rules
 import requests
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
-import phantom.rules as ph_rules
 
 from protectwise_consts import *
 
