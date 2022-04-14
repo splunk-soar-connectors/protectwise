@@ -289,6 +289,7 @@ class ProtectWiseConnector(BaseConnector):
 
     def _hunt_file(self, param):
 
+        self.save_progress("Querying hunt file")
         action_result = self.add_action_result(ActionResult(param))
 
         file_hash = param[PW_JSON_HASH]
@@ -320,10 +321,12 @@ class ProtectWiseConnector(BaseConnector):
         summary['detected_type'] = info.get('detectedType')
         summary['observation_count'] = response.get('observations', {}).get('count', 0)
 
+        self.save_progress("Querying hunt file succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_domain(self, param):
 
+        self.save_progress("Querying hunt domain")
         action_result = self.add_action_result(ActionResult(param))
 
         domain = param[PW_JSON_DOMAIN]
@@ -358,10 +361,12 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt domain succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_ip(self, param):
 
+        self.save_progress("Querying hunt ip")
         action_result = self.add_action_result(ActionResult(param))
 
         ip = param[PW_JSON_IP]
@@ -396,6 +401,7 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt ip succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_first_start_time(self, action_result):
@@ -441,6 +447,7 @@ class ProtectWiseConnector(BaseConnector):
 
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
+
         elif (self._state.get('first_run', True)):
             self._state['first_run'] = False
             limit = config.get("first_run_max_events", 100)
@@ -449,6 +456,7 @@ class ProtectWiseConnector(BaseConnector):
                 self.save_progress("Please provide a positive integer in 'Maximum events to poll first time'")
                 return action_result.set_status(phantom.APP_ERROR,
                     "Please provide a positive integer in 'Maximum events to poll first time'"), None
+
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
             if (phantom.is_fail(ret_val)):
@@ -795,6 +803,7 @@ class ProtectWiseConnector(BaseConnector):
 if __name__ == '__main__':
 
     import argparse
+    import sys
 
     import pudb
 
@@ -805,12 +814,14 @@ if __name__ == '__main__':
     argparser.add_argument('input_test_json', help='Input Test JSON file')
     argparser.add_argument('-', '--username', help='username', required=False)
     argparser.add_argument('-p', '--password', help='password', required=False)
+    argparser.add_argument('-v', '--verify', action='store_true', help='verify', required=False, default=False)
 
     args = argparser.parse_args()
     session_id = None
 
     username = args.username
     password = args.password
+    verify = args.verify
 
     if (username is not None and password is None):
 
@@ -822,7 +833,7 @@ if __name__ == '__main__':
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
             print("Accessing the Login page")
-            r = requests.get(login_url, verify=False)
+            r = requests.get(login_url, verify=verify, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -835,11 +846,11 @@ if __name__ == '__main__':
             headers['Referer'] = login_url
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            r2 = requests.post(login_url, verify=verify, data=data, headers=headers, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
             session_id = r2.cookies['sessionid']
         except Exception as e:
             print("Unable to get session id from the platfrom. Error: " + str(e))
-            exit(1)
+            sys.exit(1)
 
     with open(args.input_test_json) as f:
         in_json = f.read()
@@ -856,4 +867,4 @@ if __name__ == '__main__':
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print(json.dumps(json.loads(ret_val), indent=4))
 
-    exit(0)
+    sys.exit(0)
