@@ -22,7 +22,6 @@ import time
 from datetime import datetime, timedelta
 
 import phantom.app as phantom
-import phantom.rules as ph_rules
 import requests
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
@@ -44,14 +43,6 @@ class ProtectWiseConnector(BaseConnector):
         self._base_url = PW_BASE_URL
 
         self._state = {}
-    
-    def is_positive_non_zero_int(self, value):
-        try:
-            value = int(value)
-            return True if value > 0 else False
-        except Exception:
-            return False
-
 
     def is_positive_non_zero_int(self, value):
         try:
