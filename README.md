@@ -6,7 +6,7 @@ Connector Version: 2\.0\.4
 Product Vendor: ProtectWise  
 Product Name: ProtectWise  
 Product Version Supported (regex): "\.\*"  
-Minimum Product Version: 4\.9\.39220  
+Minimum Product Version: 5\.2\.0  
 
 This app integrates with the ProtectWise cloud platform to implement ingestion and investigative actions
 
@@ -123,7 +123,7 @@ Download pcap for an event or observation
 Type: **investigate**  
 Read only: **True**
 
-A few things to note\:<ul><li>Valid values for the <b>type</b> parameter are\: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as its <b>Source ID</b>\(source\_data\_identifier\)<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi\.png"/></a><br>Unfortunately, this value can get clipped in the UI\. Instead, use the download button to download the container json and extract the source\_data\_identifier key value<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi2\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi2\.png"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/artifact\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/artifact\.png"/></a><br></li><li>The <b>sensorid</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;\.pcap</li></ul>
+A few things to note\:<ul><li>Valid values for the <b>type</b> parameter are\: <ul><li>Event</li><li>Observation</li></ul></li><li>The app adds the <i>Event ID</i> to every container as its <b>Source ID</b>\(source\_data\_identifier\)<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi\.png"/></a><br>Unfortunately, this value can get clipped in the UI\. Instead, use the download button to download the container json and extract the source\_data\_identifier key value<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi2\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/sdi2\.png"/></a><br></li><li>The app adds the <i>Observation ID</i> to every Artifact in a key named <b>observationId</b> of the cef dictionary<a href="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/artifact\.png"><img src="/app\_resource/protectwise\_e8f8d8dc\-916f\-4267\-be15\-e9b697dd58c5/img/artifact\.png"/></a><br></li><li>The <b>sensorid</b> parameter is only required if the <b>type</b> is <b>Observation</b></li><li>The pcap file is added to the vault with a file name of &lt;<b>id</b>&gt;\.pcap</li></ul>\.
 
 #### Action Parameters
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
@@ -162,7 +162,7 @@ Hunt an IP in the network
 Type: **investigate**  
 Read only: **True**
 
-To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>
+To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>\.
 
 #### Action Parameters
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
@@ -441,7 +441,7 @@ Hunt a domain in the network
 Type: **investigate**  
 Read only: **True**
 
-To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>
+To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>\.
 
 #### Action Parameters
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
@@ -486,7 +486,7 @@ Hunt for a file in the network
 Type: **investigate**  
 Read only: **True**
 
-To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>
+To get info within a time range specify the <b>start\_time</b> and <b>end\_time</b>\. These parameters take time in the Zulu format which can be expressed as %Y\-%m\-%dT%H\:%M\:%S\.%fZ e\.g\. 2016\-12\-30T13\:00\:00\.0000Z\.<br><ul><li>If <b>start\_time</b> and <b>end\_time</b> both are not specified, then the app defaults to last 5 days</li><li>If <b>start\_time</b> is specified and <b>end\_time</b> is not, then the app will default the <b>end\_time</b> to <i>current</i></li><li>If <b>start\_time</b> is not specified and <b>end\_time</b> is, the app will throw an error</li></ul>\.
 
 #### Action Parameters
 PARAMETER | REQUIRED | DESCRIPTION | TYPE | CONTAINS
