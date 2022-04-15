@@ -528,7 +528,8 @@ class ProtectWiseConnector(BaseConnector):
         self.debug_print("Complete URL", url_to_download)
 
         try:
-            r = requests.get(self._base_url + url_to_download, headers=self._headers, params=params, stream=True)
+            r = requests.get(self._base_url + url_to_download, headers=self._headers, params=params, stream=True,
+                             timeout=PROTECTWISE_DEFAULT_TIMEOUT)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
