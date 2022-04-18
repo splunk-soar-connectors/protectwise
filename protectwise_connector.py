@@ -1,26 +1,34 @@
 # File: protectwise_connector.py
-# Copyright (c) 2016-2021 Splunk Inc.
 #
-# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
-# without a valid written license from Splunk Inc. is PROHIBITED.
-
+# Copyright (c) 2016-2022 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific language governing permissions
+# and limitations under the License.
+#
+#
 # Phantom imports
-import time
-
-import phantom.app as phantom
-from phantom.action_result import ActionResult
-from phantom.base_connector import BaseConnector
-from phantom.vault import Vault
-import phantom.rules as ph_rules
-
-from protectwise_consts import *
-
-import requests
 import json
 import os
 import tempfile
-from datetime import datetime
-from datetime import timedelta
+import time
+from datetime import datetime, timedelta
+
+import phantom.app as phantom
+import phantom.rules as ph_rules
+import requests
+from phantom.action_result import ActionResult
+from phantom.base_connector import BaseConnector
+from phantom.vault import Vault
+
+from protectwise_consts import *
 
 
 class ProtectWiseConnector(BaseConnector):
@@ -35,7 +43,7 @@ class ProtectWiseConnector(BaseConnector):
         self._base_url = PW_BASE_URL
 
         self._state = {}
-    
+
     def is_positive_non_zero_int(self, value):
         try:
             value = int(value)
@@ -43,13 +51,9 @@ class ProtectWiseConnector(BaseConnector):
         except Exception:
             return False
 
-
     def initialize(self):
-
         self._state = self.load_state()
-
         config = self.get_config()
-
         self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
         self._display_dup_artifacts = config.get(PW_JSON_ALLOW_ARTIFACT_DUPLICATES)
         self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
@@ -69,10 +73,12 @@ class ProtectWiseConnector(BaseConnector):
 
         return (phantom.APP_SUCCESS, resp_json)
 
-    def _make_rest_call(self, endpoint, action_result, headers={}, params=None, data=None, method="get", exception_error_codes=[]):
+    def _make_rest_call(self, endpoint, action_result, headers=None, params=None, data=None, method="get", exception_error_codes=[]):
         """ Function that makes the REST call to the device, generic function that can be called from various action handlers
         Needs to return two values, 1st the phantom.APP_[SUCCESS|ERROR], 2nd the response
         """
+        if headers is None:
+            headers = {}
 
         # Get the config
         config = self.get_config()
@@ -107,7 +113,8 @@ class ProtectWiseConnector(BaseConnector):
         if (hasattr(action_result, 'add_debug_data')):
             action_result.add_debug_data({'r_text': r.text if r else 'r is None'})
 
-        # Try a json parse, since most REST API's give back the data in json, if the device does not return JSONs, then need to implement parsing them some other manner
+        # Try a json parse, since most REST API's give back the data in json,
+        # if the device does not return JSONs, then need to implement parsing them some other manner
         try:
             resp_json = r.json()
         except Exception as e:
@@ -247,7 +254,8 @@ class ProtectWiseConnector(BaseConnector):
 
         # handle the case where start time is not given and end time is given
         if (start_time is None and end_time is not None):
-            return (action_result.set_status(phantom.APP_ERROR, "Please specify start_time, it is required if end_time is specified"), None, None)
+            return (action_result.set_status(phantom.APP_ERROR,
+                "Please specify start_time, it is required if end_time is specified"), None, None)
 
         # if start time is specified, process it
         if (start_time):
@@ -274,12 +282,14 @@ class ProtectWiseConnector(BaseConnector):
             end_time = self._time_now()
 
         if (end_time <= start_time):
-            return (action_result.set_status(phantom.APP_ERROR, "Invalid time range, end_time cannot be less than or equal to start_time"), None, None)
+            return (action_result.set_status(phantom.APP_ERROR,
+                "Invalid time range, end_time cannot be less than or equal to start_time"), None, None)
 
         return (phantom.APP_SUCCESS, start_time, end_time)
 
     def _hunt_file(self, param):
 
+        self.save_progress("Querying hunt file")
         action_result = self.add_action_result(ActionResult(param))
 
         file_hash = param[PW_JSON_HASH]
@@ -311,10 +321,12 @@ class ProtectWiseConnector(BaseConnector):
         summary['detected_type'] = info.get('detectedType')
         summary['observation_count'] = response.get('observations', {}).get('count', 0)
 
+        self.save_progress("Querying hunt file succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_domain(self, param):
 
+        self.save_progress("Querying hunt domain")
         action_result = self.add_action_result(ActionResult(param))
 
         domain = param[PW_JSON_DOMAIN]
@@ -349,10 +361,12 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt domain succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_ip(self, param):
 
+        self.save_progress("Querying hunt ip")
         action_result = self.add_action_result(ActionResult(param))
 
         ip = param[PW_JSON_IP]
@@ -387,6 +401,7 @@ class ProtectWiseConnector(BaseConnector):
         else:
             summary.update({'event_count': 0})
 
+        self.save_progress("Querying hunt ip succeeded")
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_first_start_time(self, action_result):
@@ -417,10 +432,11 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         limit = config[PW_JSON_MAX_CONTAINERS]
-        
+
         if not self.is_positive_non_zero_int(limit):
             self.save_progress("Please provide a positive integer in 'Maximum events for scheduled polling'")
-            return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
+            return action_result.set_status(phantom.APP_ERROR,
+                "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
 
         query_params = dict()
         last_time = self._state.get(PW_JSON_LAST_DATE_TIME)
@@ -428,25 +444,27 @@ class ProtectWiseConnector(BaseConnector):
         if self.is_poll_now():
             limit = param.get("container_count", 100)
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
-            
+
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
+
         elif (self._state.get('first_run', True)):
             self._state['first_run'] = False
             limit = config.get("first_run_max_events", 100)
 
             if not self.is_positive_non_zero_int(limit):
                 self.save_progress("Please provide a positive integer in 'Maximum events to poll first time'")
-                return action_result.set_status(phantom.APP_ERROR, "Please provide a positive integer in 'Maximum events to poll first time'"), None
+                return action_result.set_status(phantom.APP_ERROR,
+                    "Please provide a positive integer in 'Maximum events to poll first time'"), None
+
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
             if (phantom.is_fail(ret_val)):
                 return action_result.get_status(), None
-        
+
         elif (last_time):
             query_params["start"] = last_time
-        
+
         else:
             ret_val, query_params["start"] = self._get_first_start_time(action_result)
 
@@ -510,7 +528,8 @@ class ProtectWiseConnector(BaseConnector):
         self.debug_print("Complete URL", url_to_download)
 
         try:
-            r = requests.get(self._base_url + url_to_download, headers=self._headers, params=params, stream=True)
+            r = requests.get(self._base_url + url_to_download, headers=self._headers, params=params, stream=True,
+                             timeout=PROTECTWISE_DEFAULT_TIMEOUT)
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
@@ -750,9 +769,9 @@ class ProtectWiseConnector(BaseConnector):
             date_strings = set(date_strings)
 
             if (len(date_strings) == 1):
-                self.debug_print("Getting all containers with the same date, down to the millisecond." +
-                        " That means the device is generating max_containers=({0}) per second.".format(config[PW_JSON_MAX_CONTAINERS]) +
-                        " Skipping to the next second to not get stuck.")
+                self.debug_print("Getting all containers with the same date, down to the millisecond."
+                    " That means the device is generating"
+                    " max_containers=({0}) per second. Skipping to the next second to not get stuck.".format(config[PW_JSON_MAX_CONTAINERS]))
                 self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
@@ -784,8 +803,10 @@ class ProtectWiseConnector(BaseConnector):
 
 if __name__ == '__main__':
 
-    import pudb
     import argparse
+    import sys
+
+    import pudb
 
     pudb.set_trace()
 
@@ -794,12 +815,14 @@ if __name__ == '__main__':
     argparser.add_argument('input_test_json', help='Input Test JSON file')
     argparser.add_argument('-', '--username', help='username', required=False)
     argparser.add_argument('-p', '--password', help='password', required=False)
+    argparser.add_argument('-v', '--verify', action='store_true', help='verify', required=False, default=False)
 
     args = argparser.parse_args()
     session_id = None
 
     username = args.username
     password = args.password
+    verify = args.verify
 
     if (username is not None and password is None):
 
@@ -811,7 +834,7 @@ if __name__ == '__main__':
         login_url = BaseConnector._get_phantom_base_url() + "login"
         try:
             print("Accessing the Login page")
-            r = requests.get(login_url, verify=False)
+            r = requests.get(login_url, verify=verify, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
             csrftoken = r.cookies['csrftoken']
 
             data = dict()
@@ -824,11 +847,11 @@ if __name__ == '__main__':
             headers['Referer'] = login_url
 
             print("Logging into Platform to get the session id")
-            r2 = requests.post(login_url, verify=False, data=data, headers=headers)
+            r2 = requests.post(login_url, verify=verify, data=data, headers=headers, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
             session_id = r2.cookies['sessionid']
         except Exception as e:
             print("Unable to get session id from the platfrom. Error: " + str(e))
-            exit(1)
+            sys.exit(1)
 
     with open(args.input_test_json) as f:
         in_json = f.read()
@@ -845,4 +868,4 @@ if __name__ == '__main__':
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print(json.dumps(json.loads(ret_val), indent=4))
 
-    exit(0)
+    sys.exit(0)

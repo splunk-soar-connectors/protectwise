@@ -1,9 +1,17 @@
 # File: protectwise_consts.py
-# Copyright (c) 2016-2021 Splunk Inc.
 #
-# SPLUNK CONFIDENTIAL - Use or disclosure of this material in whole or in part
-# without a valid written license from Splunk Inc. is PROHIBITED.
-
+# Copyright (c) 2016-2022 Splunk Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+# either express or implied. See the License for the specific language governing permissions
+# and limitations under the License.
 PW_JSON_AUTH_TOKEN = "auth_token"
 PW_JSON_LAST_DATE_TIME = "last_date_time"
 PW_JSON_POLL_HOURS = "poll_hours"
@@ -38,3 +46,4 @@ ACTION_ID_HUNT_IP = 'hunt_ip'
 ACTION_ID_HUNT_DOMAIN = 'hunt_domain'
 ACTION_ID_HUNT_FILE = 'hunt_file'
 ACTION_ID_TEST_ASSET_CONNECTIVITY = 'test_asset_connectivity'
+PROTECTWISE_DEFAULT_TIMEOUT = 30
