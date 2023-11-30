@@ -5,7 +5,7 @@
     "publisher": "Splunk",
     "type": "siem",
     "main_module": "protectwise_connector.py",
-    "app_version": "2.0.4",
+    "app_version": "2.0.5",
     "utctime_updated": "2022-03-17T18:48:48.000000Z",
     "package_name": "phantom_protectwise",
     "product_name": "ProtectWise",
@@ -2120,5 +2120,8 @@
                 "input_file": "wheels/urllib3-1.26.7-py2.py3-none-any.whl"
             }
         ]
+    },
+    "pip39_dependencies": {
+        "wheel": []
     }
 }
