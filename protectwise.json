@@ -5,7 +5,7 @@
     "publisher": "Splunk",
     "type": "siem",
     "main_module": "protectwise_connector.py",
-    "app_version": "2.0.4",
+    "app_version": "2.0.5",
     "utctime_updated": "2022-03-17T18:48:48.000000Z",
     "package_name": "phantom_protectwise",
     "product_name": "ProtectWise",
@@ -19,7 +19,7 @@
     "python_version": "3",
     "logo": "logo_protectwise.svg",
     "logo_dark": "logo_protectwise_dark.svg",
-    "license": "Copyright (c) 2016-2022 Splunk Inc.",
+    "license": "Copyright (c) 2016-2024 Splunk Inc.",
     "configuration": {
         "auth_token": {
             "description": "Authentication Token",
@@ -2098,27 +2098,9 @@
         }
     ],
     "pip_dependencies": {
-        "wheel": [
-            {
-                "module": "certifi",
-                "input_file": "wheels/certifi-2021.10.8-py2.py3-none-any.whl"
-            },
-            {
-                "module": "chardet",
-                "input_file": "wheels/chardet-3.0.4-py2.py3-none-any.whl"
-            },
-            {
-                "module": "idna",
-                "input_file": "wheels/idna-2.10-py2.py3-none-any.whl"
-            },
-            {
-                "module": "requests",
-                "input_file": "wheels/requests-2.25.0-py2.py3-none-any.whl"
-            },
-            {
-                "module": "urllib3",
-                "input_file": "wheels/urllib3-1.26.7-py2.py3-none-any.whl"
-            }
-        ]
+        "wheel": []
+    },
+    "pip39_dependencies": {
+        "wheel": []
     }
 }
