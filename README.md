@@ -96,6 +96,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 **poll_hours** |  required  | numeric | Ingest events in last N hours (Poll Now and First Run)
 **allow_duplicate_artifacts** |  optional  | boolean | Display duplicate artifacts from polling
 **allow_duplicate_containers** |  optional  | boolean | Display duplicate containers from polling
+**retry_count** |  optional  | numeric | Number of retry REST call in case of rate limit (Default:5)
 
 ### Supported Actions  
 [test connectivity](#action-test-connectivity) - Validate the asset configuration for connectivity  
