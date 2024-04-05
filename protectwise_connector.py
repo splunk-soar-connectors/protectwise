@@ -24,11 +24,17 @@ from datetime import datetime, timedelta
 import phantom.app as phantom
 import phantom.rules as ph_rules
 import requests
+from bs4 import BeautifulSoup
 from phantom.action_result import ActionResult
 from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
 
 from protectwise_consts import *
+
+
+class RetVal2(tuple):
+    def __new__(cls, val1, val2=None):
+        return tuple.__new__(RetVal2, (val1, val2))
 
 
 class ProtectWiseConnector(BaseConnector):
@@ -57,6 +63,11 @@ class ProtectWiseConnector(BaseConnector):
         self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
         self._display_dup_artifacts = config.get(PW_JSON_ALLOW_ARTIFACT_DUPLICATES)
         self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
+        self._number_of_retries = config.get("retry_count", PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES)
+        ret_val, self._number_of_retries = self._validate_integer(self, self._number_of_retries,
+                "'Maximum attempts to retry the API call' asset configuration")
+        if phantom.is_fail(ret_val):
+            return self.get_status()
 
         return phantom.APP_SUCCESS
 
@@ -66,12 +77,139 @@ class ProtectWiseConnector(BaseConnector):
 
     def _get_sensor_list(self, action_result):
 
-        ret_val, resp_json = self._make_rest_call('/sensors', action_result)
+        ret_val, resp_json = self._make_rest_call('/sensors', action_result, exception_error_codes=[])
 
         if (phantom.is_fail(ret_val)):
             return (action_result.get_status(), None)
 
         return (phantom.APP_SUCCESS, resp_json)
+
+    def _validate_integer(self, action_result, parameter, key, allow_zero=False):
+        if parameter is not None:
+            try:
+                if not float(parameter).is_integer():
+                    return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="", param=key)), None
+
+                parameter = int(parameter)
+            except Exception:
+                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="", param=key)), None
+
+            if parameter < 0:
+                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="non-negative", param=key)), None
+            if not allow_zero and parameter == 0:
+                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="non-zero positive", param=key)), None
+
+        return phantom.APP_SUCCESS, parameter
+
+    def _get_error_message_from_exception(self, e):
+        """ This method is used to get appropriate error message from the exception.
+        :param e: Exception object
+        :return: error message
+        """
+        error_code = PHANTOM_ERR_CODE_UNAVAILABLE
+        error_msg = PHANTOM_ERR_MSG_UNAVAILABLE
+        try:
+            if hasattr(e, 'args'):
+                if len(e.args) > 1:
+                    error_code = e.args[0]
+                    error_msg = e.args[1]
+                elif len(e.args) == 1:
+                    error_msg = e.args[0]
+        except Exception as e:
+            self.debug_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
+
+        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+
+    def _get_error_details(self, resp_json):
+
+        # The device that this app talks to does not sends back a simple message,
+        # so this function does not need to be that complicated
+        message = resp_json.get('message')
+        if not message:
+            message = "Error message is unavailable"
+        return message
+
+    def _process_html_response(self, response, exception_error_codes, action_result):
+
+        # An html response, is bound to be an error
+        status_code = response.status_code
+        try:
+            soup = BeautifulSoup(response.text, "html.parser")
+            # Remove the script, style, footer and navigation part from the HTML message
+            for element in soup(["script", "style", "footer", "nav"]):
+                element.extract()
+            error_text = soup.text
+            split_lines = error_text.split('\n')
+            split_lines = [x.strip() for x in split_lines if x.strip()]
+            error_text = '\n'.join(split_lines)
+        except Exception:
+            error_text = "Cannot parse error details"
+
+        message = "Status Code: {0}. Data from server:\n{1}\n".format(status_code,
+                error_text)
+
+        # In 2.0 the platform does not like braces in messages, unless it's format parameters
+        message = message.replace('{', ' ').replace('}', ' ')
+
+        if status_code in exception_error_codes:
+            return RetVal2(action_result.set_status(phantom.APP_SUCCESS, message), response)
+
+        return RetVal2(action_result.set_status(phantom.APP_ERROR, message), response)
+
+    def _process_json_response(self, response, exception_error_codes, action_result):
+
+        # Try a json parse
+        try:
+            resp_json = response.json()
+        except Exception as e:
+            return RetVal2(action_result.set_status(phantom.APP_ERROR,
+                        PHANTOM_ERR_PARSE_JSON_RESPONSE.format(self._get_error_message_from_exception(e))), response)
+
+        if isinstance(resp_json, list):
+            # Let's not parse it here
+            return RetVal2(phantom.APP_SUCCESS, resp_json)
+
+        failed = resp_json.get('failed', False)
+
+        if failed:
+            return RetVal2(
+                    action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_SERVER.format(response.status_code,
+                        self._get_error_details(resp_json))), resp_json)
+
+        if 200 <= response.status_code < 399 or response.status_code in exception_error_codes:
+            return RetVal2(phantom.APP_SUCCESS, resp_json)
+
+        return RetVal2(
+                action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_SERVER.format(response.status_code,
+                    self._get_error_details(resp_json))), None)
+
+    def _process_response(self, response, exception_error_codes, action_result):
+
+        # store the r_text in debug data, it will get dumped in the logs if an error occurs
+        if hasattr(action_result, 'add_debug_data'):
+            if response is not None:
+                action_result.add_debug_data({'r_text': response.text})
+                action_result.add_debug_data({'r_headers': response.headers})
+                action_result.add_debug_data({'r_status_code': response.status_code})
+            else:
+                action_result.add_debug_data({'r_text': 'response is None'})
+
+        # There are just too many differences in the response to handle all of them in the same function
+        if (('json' in response.headers.get('Content-Type', '')) or ('javascript' in response.headers.get('Content-Type'))):
+            return self._process_json_response(response, exception_error_codes, action_result)
+
+        if 'html' in response.headers.get('Content-Type', ''):
+            return self._process_html_response(response, exception_error_codes, action_result)
+
+        # it's not an html or json, handle if it is a successful empty response
+        if ((200 <= response.status_code < 399) and (not response.text)) or response.status_code in exception_error_codes:
+            return RetVal2(phantom.APP_SUCCESS, response)
+
+        # everything else is actually an error at this point
+        message = "Can't process response from server. Status Code: {0} Data from server: {1}".format(
+                response.status_code, response.text.replace('{', ' ').replace('}', ' '))
+
+        return RetVal2(action_result.set_status(phantom.APP_ERROR, message), None)
 
     def _make_rest_call(self, endpoint, action_result, headers=None, params=None, data=None, method="get", exception_error_codes=[]):
         """ Function that makes the REST call to the device, generic function that can be called from various action handlers
@@ -89,8 +227,6 @@ class ProtectWiseConnector(BaseConnector):
         if (method in ['put', 'post']):
             headers.update({'Content-Type': 'application/json'})
 
-        resp_json = None
-
         # get or post or put, whatever the caller asked us to use, if not specified the default will be 'get'
         request_func = getattr(requests, method)
 
@@ -98,50 +234,30 @@ class ProtectWiseConnector(BaseConnector):
         if (not request_func):
             action_result.set_status(phantom.APP_ERROR, PW_ERR_API_UNSUPPORTED_METHOD, method=method)
 
+        self.save_progress("Making {} call to {} endpoint".format(method, endpoint))
         # Make the call
-        try:
-            r = request_func(self._base_url + endpoint,  # The complete url is made up of the base_url, the api url and the endpiont
-                    data=json.dumps(data) if data else None,  # the data, converted to json string format if present, else just set to None
-                    headers=headers,  # The headers to send in the HTTP call
-                    verify=config.get(phantom.APP_JSON_VERIFY, True),  # should cert verification be carried out?
-                    params=params)  # uri parameters if any
-        except Exception as e:
-            return (action_result.set_status(phantom.APP_ERROR, PW_ERR_SERVER_CONNECTION, e), resp_json)
+        for retry in range(1, self._number_of_retries + 1):
+            try:
+                r = request_func(self._base_url + endpoint,  # The complete url is made up of the base_url, the api url and the endpiont
+                        data=json.dumps(data) if data else None,  # the data, converted to json string format if present, else just set to None
+                        headers=headers,  # The headers to send in the HTTP call
+                        verify=config.get(phantom.APP_JSON_VERIFY, True),  # should cert verification be carried out?
+                        params=params,
+                        timeout=PROTECTWISE_DEFAULT_TIMEOUT)  # uri parameters if any
+            except Exception as e:
+                return (action_result.set_status(phantom.APP_ERROR, PW_ERR_SERVER_CONNECTION, e), None)
 
-        # self.debug_print('REST url: {0}'.format(r.url))
-
-        if (hasattr(action_result, 'add_debug_data')):
-            action_result.add_debug_data({'r_text': r.text if r else 'r is None'})
-
-        # Try a json parse, since most REST API's give back the data in json,
-        # if the device does not return JSONs, then need to implement parsing them some other manner
-        try:
-            resp_json = r.json()
-        except Exception as e:
-            # r.text is guaranteed to be NON None, it will be empty, but not None
-            msg_string = PW_ERR_JSON_PARSE.format(raw_text=r.text)
-            return (action_result.set_status(phantom.APP_ERROR, msg_string, e), resp_json)
-
-        # Handle any special HTTP error codes here, many devices return an HTTP error code like 204. The requests module treats these as error,
-        # so handle them here before anything else, uncomment the following lines in such cases
-        # if (r.status_code == 201):
-        #     return (phantom.APP_SUCCESS, resp_json)
-
-        # Handle/process any errors that we get back from the device
-        if (200 <= r.status_code <= 399):
-            # Success
-            return (phantom.APP_SUCCESS, resp_json)
-
-        # Failure
-        action_result.add_data(resp_json)
-
-        details = json.dumps(resp_json).replace('{', '').replace('}', '')
-
-        if (r.status_code in exception_error_codes):
-            # Ok to have this http error for this call, return success, the caller will handle the fact that the response is empty
-            return (action_result.set_status(phantom.APP_SUCCESS), resp_json)
-
-        return (action_result.set_status(phantom.APP_ERROR, PW_ERR_FROM_SERVER.format(status=r.status_code, detail=details)), resp_json)
+            # The Protectwise API rate limit is 10 requests per 120 seconds, \
+            # and once the limit is exceeded it throws 429 error with text response Rate limit exceeded
+            # Retry wait mechanism for the rate limit exceeded error
+            if r.status_code != 429:
+                break
+            self.debug_print("Received 429 status code from the server")
+            if retry != self._number_of_retries:
+                self.debug_print("Retrying after {} second(s)...".format(120))
+                time.sleep(120)
+        self.debug_print("Response code: {}".format(r.status_code))
+        return self._process_response(r, exception_error_codes, action_result)
 
     def _test_connectivity(self, param):
 

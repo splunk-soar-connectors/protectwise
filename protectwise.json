@@ -59,6 +59,12 @@
             "order": 5,
             "description": "Display duplicate containers from polling",
             "default": false
+        },
+        "retry_count": {
+            "data_type": "numeric",
+            "order": 6,
+            "description": "Number of retry REST call in case of rate limit (Default:5)",
+            "default": 5
         }
     },
     "actions": [
@@ -2098,9 +2104,27 @@
         }
     ],
     "pip_dependencies": {
-        "wheel": []
+        "wheel": [
+            {
+                "module": "beautifulsoup4",
+                "input_file": "wheels/py3/beautifulsoup4-4.9.1-py3-none-any.whl"
+            },
+            {
+                "module": "soupsieve",
+                "input_file": "wheels/py3/soupsieve-2.3.2.post1-py3-none-any.whl"
+            }
+        ]
     },
     "pip39_dependencies": {
-        "wheel": []
+        "wheel": [
+            {
+                "module": "beautifulsoup4",
+                "input_file": "wheels/py3/beautifulsoup4-4.9.1-py3-none-any.whl"
+            },
+            {
+                "module": "soupsieve",
+                "input_file": "wheels/py3/soupsieve-2.5-py3-none-any.whl"
+            }
+        ]
     }
 }

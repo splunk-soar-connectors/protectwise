@@ -28,6 +28,11 @@ PW_JSON_DOMAIN = "domain"
 PW_JSON_HASH = "hash"
 
 PW_ERR_SERVER_CONNECTION = "Error connecting to server"
+PHANTOM_ERR_CODE_UNAVAILABLE = "Error code unavailable"
+PHANTOM_ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the asset configuration and|or action parameters."
+PHANTOM_ERR_PARSE_JSON_RESPONSE = "Unable to parse response as JSON: {}"
+PHANTOM_ERR_SERVER = "Error from server. Status code: {0}, Details: {1}"
+
 PW_ERR_JSON_PARSE = "Unable to parse JSON"
 PW_ERR_FROM_SERVER = "API failed, Status code: {status}, Detail: {detail}"
 PW_BASE_URL = "https://api.protectwise.com/api/v1"
@@ -47,3 +52,4 @@ ACTION_ID_HUNT_DOMAIN = 'hunt_domain'
 ACTION_ID_HUNT_FILE = 'hunt_file'
 ACTION_ID_TEST_ASSET_CONNECTIVITY = 'test_asset_connectivity'
 PROTECTWISE_DEFAULT_TIMEOUT = 30
+PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES = 5
