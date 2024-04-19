@@ -254,8 +254,8 @@ class ProtectWiseConnector(BaseConnector):
                 break
             self.debug_print("Received 429 status code from the server")
             if retry != self._number_of_retries:
-                self.debug_print("Retrying after {} second(s)...".format(120))
-                time.sleep(120)
+                self.debug_print("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
+                time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
         self.debug_print("Response code: {}".format(r.status_code))
         return self._process_response(r, exception_error_codes, action_result)
 
