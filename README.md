@@ -2,7 +2,7 @@
 # ProtectWise
 
 Publisher: Splunk  
-Connector Version: 2.0.5  
+Connector Version: 2.1.0  
 Product Vendor: ProtectWise  
 Product Name: ProtectWise  
 Product Version Supported (regex): ".\*"  
