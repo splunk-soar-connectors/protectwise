@@ -65,7 +65,7 @@ class ProtectWiseConnector(BaseConnector):
         self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
         self._number_of_retries = config.get("retry_count", PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES)
         ret_val, self._number_of_retries = self._validate_integer(self, self._number_of_retries,
-                "'Number of retry REST call in case of rate limit' asset configuration")
+                "'Maximum attempts to retry the API call in case of rate limit' asset configuration")
         if phantom.is_fail(ret_val):
             return self.get_status()
 
@@ -246,15 +246,14 @@ class ProtectWiseConnector(BaseConnector):
                         timeout=PROTECTWISE_DEFAULT_TIMEOUT)  # uri parameters if any
             except Exception as e:
                 return (action_result.set_status(phantom.APP_ERROR, PW_ERR_SERVER_CONNECTION, e), None)
-
             # The Protectwise API rate limit is 10 requests per 120 seconds, \
             # and once the limit is exceeded it throws 429 error with text response Rate limit exceeded
             # Retry wait mechanism for the rate limit exceeded error
             if r.status_code != 429:
                 break
-            self.debug_print("Received 429 status code from the server")
-            if retry != self._number_of_retries:
-                self.debug_print("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
+            self.save_progress("Received 429 status code from the server")
+            if retry != self._number_of_retries + 1:
+                self.save_progress("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
                 time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
         self.debug_print("Response code: {}".format(r.status_code))
         return self._process_response(r, exception_error_codes, action_result)
