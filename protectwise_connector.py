@@ -65,7 +65,7 @@ class ProtectWiseConnector(BaseConnector):
         self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
         self._number_of_retries = config.get("retry_count", PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES)
         ret_val, self._number_of_retries = self._validate_integer(self, self._number_of_retries,
-                "'Maximum attempts to retry the API call' asset configuration")
+                "'Number of retry REST call in case of rate limit' asset configuration")
         if phantom.is_fail(ret_val):
             return self.get_status()
 

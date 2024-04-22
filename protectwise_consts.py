@@ -27,6 +27,7 @@ PW_JSON_IP = "ip"
 PW_JSON_DOMAIN = "domain"
 PW_JSON_HASH = "hash"
 
+PHANTOM_ERR_INVALID_INT = "Please provide a valid {msg} integer value in the '{param}' action parameter"
 PW_ERR_SERVER_CONNECTION = "Error connecting to server"
 PHANTOM_ERR_CODE_UNAVAILABLE = "Error code unavailable"
 PHANTOM_ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the asset configuration and|or action parameters."
