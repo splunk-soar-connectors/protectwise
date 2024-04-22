@@ -96,7 +96,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 **poll_hours** |  required  | numeric | Ingest events in last N hours (Poll Now and First Run)
 **allow_duplicate_artifacts** |  optional  | boolean | Display duplicate artifacts from polling
 **allow_duplicate_containers** |  optional  | boolean | Display duplicate containers from polling
-**retry_count** |  optional  | numeric | Number of retry REST call in case of rate limit (Default:5)
+**retry_count** |  optional  | numeric | Maximum attempts to retry the API call in case of rate limit (Default: 5)
 
 ### Supported Actions  
 [test connectivity](#action-test-connectivity) - Validate the asset configuration for connectivity  
@@ -104,7 +104,7 @@ VARIABLE | REQUIRED | TYPE | DESCRIPTION
 [hunt ip](#action-hunt-ip) - Hunt an IP in the network  
 [hunt domain](#action-hunt-domain) - Hunt a domain in the network  
 [hunt file](#action-hunt-file) - Hunt for a file in the network  
-[on poll](#action-on-poll) - Query ProtectWise for Events and Observables and ingest into Phantom  
+[on poll](#action-on-poll) - Query ProtectWise for Events and Observables and ingest into Splunk SOAR  
 
 ## action: 'test connectivity'
 Validate the asset configuration for connectivity
@@ -613,7 +613,7 @@ summary.total_objects | numeric |  |
 summary.total_objects_successful | numeric |  |    
 
 ## action: 'on poll'
-Query ProtectWise for Events and Observables and ingest into Phantom
+Query ProtectWise for Events and Observables and ingest into Splunk SOAR
 
 Type: **ingest**  
 Read only: **True**
