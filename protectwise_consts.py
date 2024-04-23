@@ -34,8 +34,6 @@ PROTECTWISE_ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the asse
 PROTECTWISE_ERR_PARSE_JSON_RESPONSE = "Unable to parse response as JSON: {}"
 PROTECTWISE_ERR_SERVER = "Error from server. Status code: {0}, Details: {1}"
 
-PROTECTWISE_ERR_JSON_PARSE = "Unable to parse JSON"
-PROTECTWISE_ERR_FROM_SERVER = "API failed, Status code: {status}, Detail: {detail}"
 PROTECTWISE_BASE_URL = "https://api.protectwise.com/api/v1"
 PROTECTWISE_ERR_API_UNSUPPORTED_METHOD = "Unsupported requests method: '{method}' specified"
 PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS = "Finished downloading {0:.0%}"
