@@ -46,7 +46,7 @@ class ProtectWiseConnector(BaseConnector):
 
         self._headers = None
 
-        self._base_url = PW_BASE_URL
+        self._base_url = PROTECTWISE_BASE_URL
 
         self._state = {}
 
@@ -60,12 +60,12 @@ class ProtectWiseConnector(BaseConnector):
     def initialize(self):
         self._state = self.load_state()
         config = self.get_config()
-        self._headers = {'X-Access-Token': config[PW_JSON_AUTH_TOKEN]}
-        self._display_dup_artifacts = config.get(PW_JSON_ALLOW_ARTIFACT_DUPLICATES)
-        self._display_dup_containers = config.get(PW_JSON_ALLOW_CONTAINER_DUPLICATES)
+        self._headers = {'X-Access-Token': config[PROTECTWISE_JSON_AUTH_TOKEN]}
+        self._display_dup_artifacts = config.get(PROTECTWISE_JSON_ALLOW_ARTIFACT_DUPLICATES)
+        self._display_dup_containers = config.get(PROTECTWISE_JSON_ALLOW_CONTAINER_DUPLICATES)
         self._number_of_retries = config.get("retry_count", PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES)
         ret_val, self._number_of_retries = self._validate_integer(self, self._number_of_retries,
-                "'Maximum attempts to retry the API call in case of rate limit' asset configuration")
+                "'Maximum attempts to retry the API call in case of rate limit' asset configuration", allow_zero=True)
         if phantom.is_fail(ret_val):
             return self.get_status()
 
@@ -88,16 +88,16 @@ class ProtectWiseConnector(BaseConnector):
         if parameter is not None:
             try:
                 if not float(parameter).is_integer():
-                    return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="", param=key)), None
+                    return action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_INVALID_INT.format(msg="", param=key)), None
 
                 parameter = int(parameter)
             except Exception:
-                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_INVALID_INT.format(msg="", param=key)), None
 
             if parameter < 0:
-                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="non-negative", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_INVALID_INT.format(msg="non-negative", param=key)), None
             if not allow_zero and parameter == 0:
-                return action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_INVALID_INT.format(msg="non-zero positive", param=key)), None
+                return action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_INVALID_INT.format(msg="non-zero positive", param=key)), None
 
         return phantom.APP_SUCCESS, parameter
 
@@ -106,8 +106,8 @@ class ProtectWiseConnector(BaseConnector):
         :param e: Exception object
         :return: error message
         """
-        error_code = PHANTOM_ERR_CODE_UNAVAILABLE
-        error_msg = PHANTOM_ERR_MSG_UNAVAILABLE
+        error_code = PROTECTWISE_ERR_CODE_UNAVAILABLE
+        error_msg = PROTECTWISE_ERR_MSG_UNAVAILABLE
         try:
             if hasattr(e, 'args'):
                 if len(e.args) > 1:
@@ -163,7 +163,7 @@ class ProtectWiseConnector(BaseConnector):
             resp_json = response.json()
         except Exception as e:
             return RetVal2(action_result.set_status(phantom.APP_ERROR,
-                        PHANTOM_ERR_PARSE_JSON_RESPONSE.format(self._get_error_message_from_exception(e))), response)
+                        PROTECTWISE_ERR_PARSE_JSON_RESPONSE.format(self._get_error_message_from_exception(e))), response)
 
         if isinstance(resp_json, list):
             # Let's not parse it here
@@ -173,14 +173,14 @@ class ProtectWiseConnector(BaseConnector):
 
         if failed:
             return RetVal2(
-                    action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_SERVER.format(response.status_code,
+                    action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_SERVER.format(response.status_code,
                         self._get_error_details(resp_json))), resp_json)
 
         if 200 <= response.status_code < 399 or response.status_code in exception_error_codes:
             return RetVal2(phantom.APP_SUCCESS, resp_json)
 
         return RetVal2(
-                action_result.set_status(phantom.APP_ERROR, PHANTOM_ERR_SERVER.format(response.status_code,
+                action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_SERVER.format(response.status_code,
                     self._get_error_details(resp_json))), None)
 
     def _process_response(self, response, exception_error_codes, action_result):
@@ -194,6 +194,7 @@ class ProtectWiseConnector(BaseConnector):
             else:
                 action_result.add_debug_data({'r_text': 'response is None'})
 
+        self.debug_print('Response headers: {}'.format(response.headers))
         # There are just too many differences in the response to handle all of them in the same function
         if (('json' in response.headers.get('Content-Type', '')) or ('javascript' in response.headers.get('Content-Type'))):
             return self._process_json_response(response, exception_error_codes, action_result)
@@ -232,11 +233,11 @@ class ProtectWiseConnector(BaseConnector):
 
         # handle the error in case the caller specified a non-existant method
         if (not request_func):
-            action_result.set_status(phantom.APP_ERROR, PW_ERR_API_UNSUPPORTED_METHOD, method=method)
+            action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_API_UNSUPPORTED_METHOD, method=method)
 
         self.save_progress("Making {} call to {} endpoint".format(method, endpoint))
         # Make the call
-        for retry in range(1, self._number_of_retries + 1):
+        for retry in range(self._number_of_retries + 1):
             try:
                 r = request_func(self._base_url + endpoint,  # The complete url is made up of the base_url, the api url and the endpiont
                         data=json.dumps(data) if data else None,  # the data, converted to json string format if present, else just set to None
@@ -245,17 +246,16 @@ class ProtectWiseConnector(BaseConnector):
                         params=params,
                         timeout=PROTECTWISE_DEFAULT_TIMEOUT)  # uri parameters if any
             except Exception as e:
-                return (action_result.set_status(phantom.APP_ERROR, PW_ERR_SERVER_CONNECTION, e), None)
+                return (action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_SERVER_CONNECTION, e), None)
             # The Protectwise API rate limit is 10 requests per 120 seconds, \
             # and once the limit is exceeded it throws 429 error with text response Rate limit exceeded
             # Retry wait mechanism for the rate limit exceeded error
             if r.status_code != 429:
                 break
             self.save_progress("Received 429 status code from the server")
-            if retry != self._number_of_retries + 1:
+            if retry != self._number_of_retries:
                 self.save_progress("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
                 time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
-        self.debug_print("Response code: {}".format(r.status_code))
         return self._process_response(r, exception_error_codes, action_result)
 
     def _test_connectivity(self, param):
@@ -269,22 +269,22 @@ class ProtectWiseConnector(BaseConnector):
 
         if (phantom.is_fail(ret_val)):
             self.save_progress("Test Connectivity Failed")
-            return self.get_status()
+            return action_result.get_status()
 
         self.save_progress("Test Connectivity Passed")
-        return self.set_status(phantom.APP_SUCCESS)
+        return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_packets(self, param):
 
         action_result = self.add_action_result(ActionResult(param))
 
-        packet_type = param[PW_JSON_TYPE]
-        object_id = param[PW_JSON_ID]
-        sensor_id = param.get(PW_JSON_SENSOR_ID)
+        packet_type = param[PROTECTWISE_JSON_TYPE]
+        object_id = param[PROTECTWISE_JSON_ID]
+        sensor_id = param.get(PROTECTWISE_JSON_SENSOR_ID)
 
         packet_type = packet_type.lower()
 
-        if packet_type not in VALID_PW_TYPES:
+        if packet_type not in VALID_PROTECTWISE_TYPES:
             return action_result.set_status(phantom.APP_ERROR, "Invalid type")
 
         info_endpoint = '/pcaps/{0}s/{1}/info'.format(packet_type, object_id)
@@ -293,7 +293,7 @@ class ProtectWiseConnector(BaseConnector):
         if (packet_type == "observation"):
 
             if (not sensor_id):
-                return action_result.set_status(phantom.APP_ERROR, "{0} is required when type is observation".format(PW_JSON_SENSOR_ID))
+                return action_result.set_status(phantom.APP_ERROR, "{0} is required when type is observation".format(PROTECTWISE_JSON_SENSOR_ID))
 
             info_endpoint = '/pcaps/{0}s/{1}/{2}/info'.format(packet_type, sensor_id, object_id)
             file_endpoint = '/pcaps/{0}s/{1}/{2}'.format(packet_type, sensor_id, object_id)
@@ -364,8 +364,8 @@ class ProtectWiseConnector(BaseConnector):
 
     def _handle_time_interval(self, param, action_result):
 
-        start_time = param.get(PW_JSON_START_TIME)
-        end_time = param.get(PW_JSON_END_TIME)
+        start_time = param.get(PROTECTWISE_JSON_START_TIME)
+        end_time = param.get(PROTECTWISE_JSON_END_TIME)
 
         # handle the case where start time is not given and end time is given
         if (start_time is None and end_time is not None):
@@ -374,20 +374,20 @@ class ProtectWiseConnector(BaseConnector):
 
         # if start time is specified, process it
         if (start_time):
-            start_time = self._parse_time(PW_JSON_START_TIME, start_time, action_result)
+            start_time = self._parse_time(PROTECTWISE_JSON_START_TIME, start_time, action_result)
             if (start_time is None):
                 return (action_result.get_status(), None, None)
 
         # if end time is specified, process it
         if (end_time):
-            end_time = self._parse_time(PW_JSON_END_TIME, end_time, action_result)
+            end_time = self._parse_time(PROTECTWISE_JSON_END_TIME, end_time, action_result)
             if (end_time is None):
                 return (action_result.get_status(), None, None)
 
         # if start time is not specified, get the default value
         if (start_time is None):
             # get the start time to use, i.e. current - hours in seconds
-            start_time = int(time.time() - (int(PW_N_DAYS_HOURS) * (60 * 60)))
+            start_time = int(time.time() - (int(PROTECTWISE_N_DAYS_HOURS) * (60 * 60)))
 
             # convert it to milliseconds
             start_time = start_time * 1000
@@ -407,7 +407,7 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress("Querying hunt file")
         action_result = self.add_action_result(ActionResult(param))
 
-        file_hash = param[PW_JSON_HASH]
+        file_hash = param[PROTECTWISE_JSON_HASH]
 
         ret_val, start_time, end_time = self._handle_time_interval(param, action_result)
 
@@ -444,7 +444,7 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress("Querying hunt domain")
         action_result = self.add_action_result(ActionResult(param))
 
-        domain = param[PW_JSON_DOMAIN]
+        domain = param[PROTECTWISE_JSON_DOMAIN]
 
         ret_val, start_time, end_time = self._handle_time_interval(param, action_result)
 
@@ -484,7 +484,7 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress("Querying hunt ip")
         action_result = self.add_action_result(ActionResult(param))
 
-        ip = param[PW_JSON_IP]
+        ip = param[PROTECTWISE_JSON_IP]
 
         ret_val, start_time, end_time = self._handle_time_interval(param, action_result)
 
@@ -524,7 +524,7 @@ class ProtectWiseConnector(BaseConnector):
         config = self.get_config()
 
         # Get the poll hours
-        poll_hours = config[PW_JSON_POLL_HOURS]
+        poll_hours = config[PROTECTWISE_JSON_POLL_HOURS]
 
         if not self.is_positive_non_zero_int(poll_hours):
             self.save_progress("Please provide a positive integer in 'Ingest events in last N hours'")
@@ -546,7 +546,7 @@ class ProtectWiseConnector(BaseConnector):
         # function to separate on poll and poll now
         config = self.get_config()
 
-        limit = config[PW_JSON_MAX_CONTAINERS]
+        limit = config[PROTECTWISE_JSON_MAX_CONTAINERS]
 
         if not self.is_positive_non_zero_int(limit):
             self.save_progress("Please provide a positive integer in 'Maximum events for scheduled polling'")
@@ -554,7 +554,7 @@ class ProtectWiseConnector(BaseConnector):
                 "Please provide a positive integer in 'Maximum events for scheduled polling'"), None
 
         query_params = dict()
-        last_time = self._state.get(PW_JSON_LAST_DATE_TIME)
+        last_time = self._state.get(PROTECTWISE_JSON_LAST_DATE_TIME)
 
         if self.is_poll_now():
             limit = param.get("container_count", 100)
@@ -591,7 +591,7 @@ class ProtectWiseConnector(BaseConnector):
         query_params["end"] = self._time_now()
 
         if (not self.is_poll_now()):
-            self._state[PW_JSON_LAST_DATE_TIME] = query_params["end"]
+            self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = query_params["end"]
 
         return phantom.APP_SUCCESS, query_params
 
@@ -681,7 +681,7 @@ class ProtectWiseConnector(BaseConnector):
                         file_handle.write(chunk)
                         file_handle.flush()
                         os.fsync(file_handle.fileno())
-                        self.send_progress(PW_PROG_FINISHED_DOWNLOADING_STATUS, float(bytes_downloaded) / float(bytes_to_download))
+                        self.send_progress(PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS, float(bytes_downloaded) / float(bytes_to_download))
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
@@ -721,7 +721,7 @@ class ProtectWiseConnector(BaseConnector):
             connection_info = observation.get('connectionInfo')
 
             artifact['cef'] = cef = dict()
-            artifact['cef_types'] = PW_CEF_CONTAINS
+            artifact['cef_types'] = PROTECTWISE_CEF_CONTAINS
 
             hashes = {}
 
@@ -877,7 +877,7 @@ class ProtectWiseConnector(BaseConnector):
 
             last_date_time = events[0]["startedAt"]
 
-            self._state[PW_JSON_LAST_DATE_TIME] = last_date_time
+            self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = last_date_time
 
             date_strings = [x["startedAt"] for x in events]
 
@@ -886,8 +886,9 @@ class ProtectWiseConnector(BaseConnector):
             if (len(date_strings) == 1):
                 self.debug_print("Getting all containers with the same date, down to the millisecond."
                     " That means the device is generating"
-                    " max_containers=({0}) per second. Skipping to the next second to not get stuck.".format(config[PW_JSON_MAX_CONTAINERS]))
-                self._state[PW_JSON_LAST_DATE_TIME] = int(self._state[PW_JSON_LAST_DATE_TIME]) + 1
+                    " max_containers=({0}) per second."
+                    " Skipping to the next second to not get stuck.".format(config[PROTECTWISE_JSON_MAX_CONTAINERS]))
+                self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = int(self._state[PROTECTWISE_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
 

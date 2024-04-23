@@ -63,8 +63,8 @@
         "retry_count": {
             "data_type": "numeric",
             "order": 6,
-            "description": "Maximum attempts to retry the API call in case of rate limit (Default: 5)",
-            "default": 5
+            "description": "Maximum attempts to retry the API call in case of rate limit (Default: 3)",
+            "default": 3
         }
     },
     "actions": [
