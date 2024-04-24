@@ -124,10 +124,11 @@ class ProtectWiseConnector(BaseConnector):
 
         # The device that this app talks to does not sends back a simple message,
         # so this function does not need to be that complicated
-        message = resp_json.get('message')
-        if not message:
-            message = "Error message is unavailable"
-        return message
+        err_message = resp_json.get('error')
+        message = "Error message is unavailable"
+        if not err_message:
+            return message
+        return err_message.get('info', err_message.get('message', message))
 
     def _process_html_response(self, response, exception_error_codes, action_result):
 
