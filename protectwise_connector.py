@@ -238,7 +238,7 @@ class ProtectWiseConnector(BaseConnector):
 
         self.save_progress("Making {} call to {} endpoint".format(method, endpoint))
         # Make the call
-        for retry in range(self._number_of_retries + 1):
+        for attempt_idx in range(self._number_of_retries + 1):
             try:
                 r = request_func(self._base_url + endpoint,  # The complete url is made up of the base_url, the api url and the endpiont
                         data=json.dumps(data) if data else None,  # the data, converted to json string format if present, else just set to None
@@ -254,7 +254,7 @@ class ProtectWiseConnector(BaseConnector):
             if r.status_code != 429:
                 break
             self.save_progress("Received 429 status code from the server")
-            if retry != self._number_of_retries:
+            if attempt_idx != self._number_of_retries:
                 self.save_progress("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
                 time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
         return self._process_response(r, exception_error_codes, action_result)
