@@ -254,6 +254,7 @@ class ProtectWiseConnector(BaseConnector):
             if r.status_code != 429:
                 break
             self.save_progress("Received 429 status code from the server")
+            # Don't save_progress and sleep on the last attempt
             if attempt_idx != self._number_of_retries:
                 self.save_progress("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
                 time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
