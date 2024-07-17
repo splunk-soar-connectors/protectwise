@@ -27,7 +27,7 @@ PROTECTWISE_JSON_IP = "ip"
 PROTECTWISE_JSON_DOMAIN = "domain"
 PROTECTWISE_JSON_HASH = "hash"
 
-PROTECTWISE_ERR_INVALID_INT = "Please provide a valid {msg} integer value in the '{param}' action parameter"
+PROTECTWISE_ERR_INVALID_INT = "Please provide a valid {msg} integer value in the {param} parameter"
 PROTECTWISE_ERR_SERVER_CONNECTION = "Error connecting to server"
 PROTECTWISE_ERR_CODE_UNAVAILABLE = "Error code unavailable"
 PROTECTWISE_ERR_MSG_UNAVAILABLE = "Unknown error occurred. Please check the asset configuration and|or action parameters."
