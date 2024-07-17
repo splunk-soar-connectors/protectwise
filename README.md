@@ -6,7 +6,7 @@ Connector Version: 2.1.0
 Product Vendor: ProtectWise  
 Product Name: ProtectWise  
 Product Version Supported (regex): ".\*"  
-Minimum Product Version: 6.2.0  
+Minimum Product Version: 6.2.1  
 
 This app integrates with the ProtectWise cloud platform to implement ingestion and investigative actions
 
