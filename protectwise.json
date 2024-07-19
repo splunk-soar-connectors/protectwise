@@ -5,13 +5,13 @@
     "publisher": "Splunk",
     "type": "siem",
     "main_module": "protectwise_connector.py",
-    "app_version": "2.0.4",
+    "app_version": "2.1.0",
     "utctime_updated": "2022-03-17T18:48:48.000000Z",
     "package_name": "phantom_protectwise",
     "product_name": "ProtectWise",
     "product_vendor": "ProtectWise",
     "product_version_regex": ".*",
-    "min_phantom_version": "5.2.0",
+    "min_phantom_version": "6.2.1",
     "fips_compliant": true,
     "latest_tested_versions": [
         "ProtectWise API v1 06/10/2021"
@@ -19,7 +19,7 @@
     "python_version": "3",
     "logo": "logo_protectwise.svg",
     "logo_dark": "logo_protectwise_dark.svg",
-    "license": "Copyright (c) 2016-2022 Splunk Inc.",
+    "license": "Copyright (c) 2016-2024 Splunk Inc.",
     "configuration": {
         "auth_token": {
             "description": "Authentication Token",
@@ -59,6 +59,12 @@
             "order": 5,
             "description": "Display duplicate containers from polling",
             "default": false
+        },
+        "retry_count": {
+            "data_type": "numeric",
+            "order": 6,
+            "description": "Maximum attempts to retry the API call in case of rate limit (Default: 3)",
+            "default": 3
         }
     },
     "actions": [
@@ -2061,7 +2067,7 @@
         },
         {
             "action": "on poll",
-            "description": "Query ProtectWise for Events and Observables and ingest into Phantom",
+            "description": "Query ProtectWise for Events and Observables and ingest into Splunk SOAR",
             "type": "ingest",
             "identifier": "on_poll",
             "read_only": true,
@@ -2098,27 +2104,9 @@
         }
     ],
     "pip_dependencies": {
-        "wheel": [
-            {
-                "module": "certifi",
-                "input_file": "wheels/certifi-2021.10.8-py2.py3-none-any.whl"
-            },
-            {
-                "module": "chardet",
-                "input_file": "wheels/chardet-3.0.4-py2.py3-none-any.whl"
-            },
-            {
-                "module": "idna",
-                "input_file": "wheels/idna-2.10-py2.py3-none-any.whl"
-            },
-            {
-                "module": "requests",
-                "input_file": "wheels/requests-2.25.0-py2.py3-none-any.whl"
-            },
-            {
-                "module": "urllib3",
-                "input_file": "wheels/urllib3-1.26.7-py2.py3-none-any.whl"
-            }
-        ]
+        "wheel": []
+    },
+    "pip39_dependencies": {
+        "wheel": []
     }
 }
