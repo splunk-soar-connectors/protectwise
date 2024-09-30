@@ -38,18 +38,16 @@ PROTECTWISE_BASE_URL = "https://api.protectwise.com/api/v1"
 PROTECTWISE_ERR_API_UNSUPPORTED_METHOD = "Unsupported requests method: '{method}' specified"
 PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS = "Finished downloading {0:.0%}"
 
-PROTECTWISE_CEF_CONTAINS = {
-    "observationId": ["protectwise observation id"],
-    "sensorId": ["protectwise sensor id"]}
+PROTECTWISE_CEF_CONTAINS = {"observationId": ["protectwise observation id"], "sensorId": ["protectwise sensor id"]}
 VALID_PROTECTWISE_TYPES = ["event", "observation"]
-PROTECTWISE_N_DAYS_HOURS = (5 * 24)
+PROTECTWISE_N_DAYS_HOURS = 5 * 24
 
 # actions that this app supports
-ACTION_ID_GET_PACKETS = 'get_packets'
-ACTION_ID_HUNT_IP = 'hunt_ip'
-ACTION_ID_HUNT_DOMAIN = 'hunt_domain'
-ACTION_ID_HUNT_FILE = 'hunt_file'
-ACTION_ID_TEST_ASSET_CONNECTIVITY = 'test_asset_connectivity'
+ACTION_ID_GET_PACKETS = "get_packets"
+ACTION_ID_HUNT_IP = "hunt_ip"
+ACTION_ID_HUNT_DOMAIN = "hunt_domain"
+ACTION_ID_HUNT_FILE = "hunt_file"
+ACTION_ID_TEST_ASSET_CONNECTIVITY = "test_asset_connectivity"
 PROTECTWISE_DEFAULT_TIMEOUT = 30
 PROTECTWISE_DEFAULT_NUMBER_OF_RETRIES = 3
 PROTECTWISE_WAIT_NUMBER_OF_SECONDS = 120
