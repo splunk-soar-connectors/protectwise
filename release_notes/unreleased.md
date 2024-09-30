@@ -1,3 +1,1 @@
 **Unreleased**
-
-* [PAPP-34761] - update pre-commit
