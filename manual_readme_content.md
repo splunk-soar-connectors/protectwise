@@ -1,38 +1,24 @@
-[comment]: # " File: README.md"
-[comment]: # "  Copyright (c) 2016-2024 Splunk Inc."
-[comment]: # ""
-[comment]: # "Licensed under the Apache License, Version 2.0 (the 'License');"
-[comment]: # "you may not use this file except in compliance with the License."
-[comment]: # "You may obtain a copy of the License at"
-[comment]: # ""
-[comment]: # "    http://www.apache.org/licenses/LICENSE-2.0"
-[comment]: # ""
-[comment]: # "Unless required by applicable law or agreed to in writing, software distributed under"
-[comment]: # "the License is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,"
-[comment]: # "either express or implied. See the License for the specific language governing permissions"
-[comment]: # "and limitations under the License."
-[comment]: # ""
 The ProtectWise app enables the collection of events and the corresponding related observations into
 containers and artifacts in Phantom.
 
-The first thing to do is create the ProtectWise asset in Phantom.  
+The first thing to do is create the ProtectWise asset in Phantom.\
 It's good practice to set the Label of the objects from this source to a **NEW ENTRY** called
-**Event** .  
-Once the asset is saved, run Test Connectivity and make sure it passes.  
+**Event** .\
+Once the asset is saved, run Test Connectivity and make sure it passes.\
 The Test connection action is successful only when the session is created and the REST API call is
-made successfully.  
+made successfully.
 
 ## Containers created
 
-The app will create a single container for each Event that it ingests from ProtectWise.  
+The app will create a single container for each Event that it ingests from ProtectWise.
 
 ## Event Artifact
 
 Every Event in ProtectWise is made up of Observations. Each Observation is ingested and added as an
-Artifact into the created Container. [![](img/artifact.png)](img/artifact.png)  
-  
+Artifact into the created Container. [![](img/artifact.png)](img/artifact.png)
+
 The fields that are present in the artifact greatly depend upon the type of Observation that was
-ingested. Different Observations will have different types of values in the artifacts.  
+ingested. Different Observations will have different types of values in the artifacts.\
 The app supports two modes of ingestion, let's discuss the differences between them.
 
 ## POLL NOW
@@ -51,22 +37,20 @@ This mode is used to schedule a polling action on the asset at regular intervals
 configured via the INGEST SETTINGS tab of the asset. It makes use of the following asset
 configuration parameters (among others):
 
--   Maximum events to poll the first time
+- Maximum events to poll the first time
 
-      
-    The app detects the first time it is polling an asset and will ingest this number of events (at
-    the most). It will also use the **poll_hours** value.
+  The app detects the first time it is polling an asset and will ingest this number of events (at
+  the most). It will also use the **poll_hours** value.
 
--   Maximum Containers for scheduled polling
+- Maximum Containers for scheduled polling
 
-      
-    For all scheduled polls after the first, the app will ingest this number of events.
+  For all scheduled polls after the first, the app will ingest this number of events.
 
 In case of Scheduled Polling, on every poll, the app remembers the time of the last event that it
 has ingested and will pick up from the same time in the next polling cycle. For best results, keep
 the poll interval and *Maximum Containers for scheduled polling* values close to the number of
 events you would get within a time interval. This way, every poll will end up ingesting all the new
-events.  
+events.\
 It is also very important that the *Maximum Container for scheduled polling* configured should be
 greater than the maximum events that are generated **per second** . If the app detects it got the
 maximum configured events and all occurred in the same second, it will start polling from the next
