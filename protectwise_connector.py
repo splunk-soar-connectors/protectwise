@@ -1,6 +1,6 @@
 # File: protectwise_connector.py
 #
-# Copyright (c) 2016-2024 Splunk Inc.
+# Copyright (c) 2016-2025 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,11 +38,9 @@ class RetVal2(tuple):
 
 
 class ProtectWiseConnector(BaseConnector):
-
     def __init__(self):
-
         # Call the super class
-        super(ProtectWiseConnector, self).__init__()
+        super().__init__()
 
         self._headers = None
 
@@ -77,7 +75,6 @@ class ProtectWiseConnector(BaseConnector):
         return phantom.APP_SUCCESS
 
     def _get_sensor_list(self, action_result):
-
         ret_val, resp_json = self._make_rest_call("/sensors", action_result, exception_error_codes=[])
 
         if phantom.is_fail(ret_val):
@@ -117,12 +114,11 @@ class ProtectWiseConnector(BaseConnector):
                 elif len(e.args) == 1:
                     error_msg = e.args[0]
         except Exception as e:
-            self.debug_print("Error occurred while fetching exception information. Details: {}".format(str(e)))
+            self.debug_print(f"Error occurred while fetching exception information. Details: {e!s}")
 
-        return "Error Code: {0}. Error Message: {1}".format(error_code, error_msg)
+        return f"Error Code: {error_code}. Error Message: {error_msg}"
 
     def _get_error_details(self, resp_json):
-
         # The device that this app talks to does not sends back a simple message,
         # so this function does not need to be that complicated
         err_message = resp_json.get("error")
@@ -132,7 +128,6 @@ class ProtectWiseConnector(BaseConnector):
         return err_message.get("info", err_message.get("message", message))
 
     def _process_html_response(self, response, exception_error_codes, action_result):
-
         # An html response, is bound to be an error
         status_code = response.status_code
         try:
@@ -147,7 +142,7 @@ class ProtectWiseConnector(BaseConnector):
         except Exception:
             error_text = "Cannot parse error details"
 
-        message = "Status Code: {0}. Data from server:\n{1}\n".format(status_code, error_text)
+        message = f"Status Code: {status_code}. Data from server:\n{error_text}\n"
 
         # In 2.0 the platform does not like braces in messages, unless it's format parameters
         message = message.replace("{", " ").replace("}", " ")
@@ -158,7 +153,6 @@ class ProtectWiseConnector(BaseConnector):
         return RetVal2(action_result.set_status(phantom.APP_ERROR, message), response)
 
     def _process_json_response(self, response, exception_error_codes, action_result):
-
         # Try a json parse
         try:
             resp_json = response.json()
@@ -193,7 +187,6 @@ class ProtectWiseConnector(BaseConnector):
         )
 
     def _process_response(self, response, exception_error_codes, action_result):
-
         # store the r_text in debug data, it will get dumped in the logs if an error occurs
         if hasattr(action_result, "add_debug_data"):
             if response is not None:
@@ -203,7 +196,7 @@ class ProtectWiseConnector(BaseConnector):
             else:
                 action_result.add_debug_data({"r_text": "response is None"})
 
-        self.debug_print("Response headers: {}".format(response.headers))
+        self.debug_print(f"Response headers: {response.headers}")
         # There are just too many differences in the response to handle all of them in the same function
         if ("json" in response.headers.get("Content-Type", "")) or ("javascript" in response.headers.get("Content-Type")):
             return self._process_json_response(response, exception_error_codes, action_result)
@@ -216,7 +209,7 @@ class ProtectWiseConnector(BaseConnector):
             return RetVal2(phantom.APP_SUCCESS, response)
 
         # everything else is actually an error at this point
-        message = "Can't process response from server. Status Code: {0} Data from server: {1}".format(
+        message = "Can't process response from server. Status Code: {} Data from server: {}".format(
             response.status_code, response.text.replace("{", " ").replace("}", " ")
         )
 
@@ -245,7 +238,7 @@ class ProtectWiseConnector(BaseConnector):
         if not request_func:
             action_result.set_status(phantom.APP_ERROR, PROTECTWISE_ERR_API_UNSUPPORTED_METHOD, method=method)
 
-        self.save_progress("Making {} call to {} endpoint".format(method, endpoint))
+        self.save_progress(f"Making {method} call to {endpoint} endpoint")
         # Make the call
         for attempt_idx in range(self._number_of_retries + 1):
             try:
@@ -267,12 +260,11 @@ class ProtectWiseConnector(BaseConnector):
             self.save_progress("Received 429 status code from the server")
             # Don't save_progress and sleep on the last attempt
             if attempt_idx != self._number_of_retries:
-                self.save_progress("Retrying after {} second(s)...".format(PROTECTWISE_WAIT_NUMBER_OF_SECONDS))
+                self.save_progress(f"Retrying after {PROTECTWISE_WAIT_NUMBER_OF_SECONDS} second(s)...")
                 time.sleep(PROTECTWISE_WAIT_NUMBER_OF_SECONDS)
         return self._process_response(r, exception_error_codes, action_result)
 
     def _test_connectivity(self, param):
-
         self.save_progress("Attempting to connect to API endpoint...")
         self.save_progress("Querying sensor list to validate config")
 
@@ -288,7 +280,6 @@ class ProtectWiseConnector(BaseConnector):
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_packets(self, param):
-
         action_result = self.add_action_result(ActionResult(param))
 
         packet_type = param[PROTECTWISE_JSON_TYPE]
@@ -300,16 +291,15 @@ class ProtectWiseConnector(BaseConnector):
         if packet_type not in VALID_PROTECTWISE_TYPES:
             return action_result.set_status(phantom.APP_ERROR, "Invalid type")
 
-        info_endpoint = "/pcaps/{0}s/{1}/info".format(packet_type, object_id)
-        file_endpoint = "/pcaps/{0}s/{1}".format(packet_type, object_id)
+        info_endpoint = f"/pcaps/{packet_type}s/{object_id}/info"
+        file_endpoint = f"/pcaps/{packet_type}s/{object_id}"
 
         if packet_type == "observation":
-
             if not sensor_id:
-                return action_result.set_status(phantom.APP_ERROR, "{0} is required when type is observation".format(PROTECTWISE_JSON_SENSOR_ID))
+                return action_result.set_status(phantom.APP_ERROR, f"{PROTECTWISE_JSON_SENSOR_ID} is required when type is observation")
 
-            info_endpoint = "/pcaps/{0}s/{1}/{2}/info".format(packet_type, sensor_id, object_id)
-            file_endpoint = "/pcaps/{0}s/{1}/{2}".format(packet_type, sensor_id, object_id)
+            info_endpoint = f"/pcaps/{packet_type}s/{sensor_id}/{object_id}/info"
+            file_endpoint = f"/pcaps/{packet_type}s/{sensor_id}/{object_id}"
 
         ret_val, file_info = self._make_rest_call(info_endpoint, action_result, exception_error_codes=[404, 505])
         if phantom.is_fail(ret_val):
@@ -324,7 +314,7 @@ class ProtectWiseConnector(BaseConnector):
         action_result.add_data(file_info)
 
         # Now download the file
-        file_name = "{0}.pcap".format(object_id)
+        file_name = f"{object_id}.pcap"
 
         if hasattr(Vault, "get_vault_tmp_dir"):
             tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir())
@@ -343,7 +333,7 @@ class ProtectWiseConnector(BaseConnector):
         # MOVE the file to the vault
         vault_attach_dict = {}
 
-        self.debug_print("Vault file name: {0}".format(file_name))
+        self.debug_print(f"Vault file name: {file_name}")
 
         vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = self.get_action_name()
         vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
@@ -356,27 +346,25 @@ class ProtectWiseConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
 
         if not success:
-            self.debug_print("Failed to add file to Vault: {0}".format(message))
-            return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault: {}".format(message))
+            self.debug_print(f"Failed to add file to Vault: {message}")
+            return action_result.set_status(phantom.APP_ERROR, f"Failed to add the file to Vault: {message}")
 
         action_result.set_summary({"vault_id": vault_id})
 
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _parse_time(self, param_name, time_str, action_result):
-
         ret_val = None
         try:
             dt = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
             dt_tt = dt.timetuple()
             ret_val = int(time.mktime(dt_tt)) * 1000
         except Exception as e:
-            action_result.set_status(phantom.APP_ERROR, "Unable to parse {0} value {1}, Error: {2}".format(param_name, time_str, str(e)))
+            action_result.set_status(phantom.APP_ERROR, f"Unable to parse {param_name} value {time_str}, Error: {e!s}")
 
         return ret_val
 
     def _handle_time_interval(self, param, action_result):
-
         start_time = param.get(PROTECTWISE_JSON_START_TIME)
         end_time = param.get(PROTECTWISE_JSON_END_TIME)
 
@@ -422,7 +410,6 @@ class ProtectWiseConnector(BaseConnector):
         return (phantom.APP_SUCCESS, start_time, end_time)
 
     def _hunt_file(self, param):
-
         self.save_progress("Querying hunt file")
         action_result = self.add_action_result(ActionResult(param))
 
@@ -433,7 +420,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = "/reputations/files/{0}".format(file_hash)
+        endpoint = f"/reputations/files/{file_hash}"
 
         params = {
             # 'details': 'threat,ip,domain,device',
@@ -460,7 +447,6 @@ class ProtectWiseConnector(BaseConnector):
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_domain(self, param):
-
         self.save_progress("Querying hunt domain")
         action_result = self.add_action_result(ActionResult(param))
 
@@ -471,7 +457,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = "/reputations/domains/{0}".format(domain)
+        endpoint = f"/reputations/domains/{domain}"
 
         params = {"details": "threat,domain,device", "include": "netflows", "start": start_time, "end": end_time}
 
@@ -496,7 +482,6 @@ class ProtectWiseConnector(BaseConnector):
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _hunt_ip(self, param):
-
         self.save_progress("Querying hunt ip")
         action_result = self.add_action_result(ActionResult(param))
 
@@ -507,7 +492,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = "/reputations/ips/{0}".format(ip)
+        endpoint = f"/reputations/ips/{ip}"
 
         params = {"details": "threat,ip,device", "include": "netflows", "start": start_time, "end": end_time}
 
@@ -532,7 +517,6 @@ class ProtectWiseConnector(BaseConnector):
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _get_first_start_time(self, action_result):
-
         config = self.get_config()
 
         # Get the poll hours
@@ -554,7 +538,6 @@ class ProtectWiseConnector(BaseConnector):
         return int(time.time() * 1000)
 
     def _get_query_params(self, param, action_result):
-
         # function to separate on poll and poll now
         config = self.get_config()
 
@@ -612,7 +595,6 @@ class ProtectWiseConnector(BaseConnector):
         return phantom.APP_SUCCESS, query_params
 
     def _get_artifact_name(self, observation):
-
         default_name = "Observation Artifact"
 
         try:
@@ -621,12 +603,12 @@ class ProtectWiseConnector(BaseConnector):
             pass
 
         try:
-            return "{0} Observation from {1}".format(observation["killChainStage"], observation["source"])
+            return "{} Observation from {}".format(observation["killChainStage"], observation["source"])
         except:
             pass
 
         try:
-            return "Observation from {0}".format(observation["source"])
+            return "Observation from {}".format(observation["source"])
         except:
             pass
 
@@ -654,7 +636,7 @@ class ProtectWiseConnector(BaseConnector):
         # A big file will be downloaded in chunks of percent_block else it will be a synchronous download
         big_file_size_bytes = 20 * (1024 * 1024)
 
-        self.save_progress("Downloading file from {0} to {1}".format(url_to_download, local_file_path))
+        self.save_progress(f"Downloading file from {url_to_download} to {local_file_path}")
 
         self.debug_print("Complete URL", url_to_download)
 
@@ -666,7 +648,7 @@ class ProtectWiseConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
         if r.status_code != requests.codes.ok:  # pylint: disable=E1101
-            return action_result.set_status(phantom.APP_ERROR, "Server returned status_code: {0}".format(r.status_code))
+            return action_result.set_status(phantom.APP_ERROR, f"Server returned status_code: {r.status_code}")
 
         # get the content length
         content_size = r.headers.get("content-length")
@@ -705,7 +687,6 @@ class ProtectWiseConnector(BaseConnector):
         return phantom.APP_SUCCESS
 
     def _create_artifacts_for_event(self, event, action_result, container_index):
-
         artifacts = []
 
         observation_count = event.get("observationCount")
@@ -716,9 +697,9 @@ class ProtectWiseConnector(BaseConnector):
         event_id = event["id"]
 
         # we need to get the details of the event
-        ret_val, resp_json = self._make_rest_call("/events/{0}".format(event_id), action_result)
+        ret_val, resp_json = self._make_rest_call(f"/events/{event_id}", action_result)
         if phantom.is_fail(ret_val):
-            return self.set_status(phantom.APP_ERROR, "Failed to get events: {0}".format(action_result.get_message()))
+            return self.set_status(phantom.APP_ERROR, f"Failed to get events: {action_result.get_message()}")
 
         observations = resp_json.get("observations")
 
@@ -726,8 +707,7 @@ class ProtectWiseConnector(BaseConnector):
             return artifacts
 
         for i, observation in enumerate(observations):
-
-            self.send_progress("Processing Container # {0} Artifact # {1}".format(container_index, i))
+            self.send_progress(f"Processing Container # {container_index} Artifact # {i}")
 
             artifact = dict()
 
@@ -761,7 +741,6 @@ class ProtectWiseConnector(BaseConnector):
                     cef["fileHashSha1"] = hashes["sha1"]
 
             if connection_info:
-
                 cef["sourceAddress"] = connection_info.get("srcIp")
                 cef["destinationAddress"] = connection_info.get("dstIp")
 
@@ -787,10 +766,8 @@ class ProtectWiseConnector(BaseConnector):
         return datetime.fromtimestamp(int(epoch_milli) / 1000.0).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     def _save_results(self, results):
-
         containers_processed = 0
         for i, result in enumerate(results):
-
             # result is a dictionary of a single container and artifacts
             if "container" not in result:
                 continue
@@ -805,9 +782,9 @@ class ProtectWiseConnector(BaseConnector):
 
             containers_processed += 1
 
-            self.send_progress("Adding Container # {0}".format(i))
+            self.send_progress(f"Adding Container # {i}")
             ret_val, response, container_id = self.save_container(result["container"])
-            self.debug_print("save_container returns, value: {0}, reason: {1}, id: {2}".format(ret_val, response, container_id))
+            self.debug_print(f"save_container returns, value: {ret_val}, reason: {response}, id: {container_id}")
 
             if phantom.is_fail(ret_val):
                 continue
@@ -824,21 +801,19 @@ class ProtectWiseConnector(BaseConnector):
             len_artifacts = len(artifacts)
 
             for j, artifact in enumerate(artifacts):
-
                 # if it is the last artifact of the last container
                 if (j + 1) == len_artifacts:
                     # mark it such that active playbooks get executed
                     artifact["run_automation"] = True
 
                 artifact["container_id"] = container_id
-                self.send_progress("Adding Container # {0}, Artifact # {1}".format(i, j))
+                self.send_progress(f"Adding Container # {i}, Artifact # {j}")
                 ret_val, status_string, artifact_id = self.save_artifact(artifact)
-                self.debug_print("save_artifact returns, value: {0}, reason: {1}, id: {2}".format(ret_val, status_string, artifact_id))
+                self.debug_print(f"save_artifact returns, value: {ret_val}, reason: {status_string}, id: {artifact_id}")
 
         return containers_processed
 
     def _on_poll(self, param):
-
         action_result = ActionResult(param)
 
         # Get the requests based on the type of poll
@@ -850,19 +825,18 @@ class ProtectWiseConnector(BaseConnector):
         ret_val, resp_json = self._make_rest_call("/events", action_result, params=query_params)
 
         if phantom.is_fail(ret_val):
-            return self.set_status(phantom.APP_ERROR, "Failed to get events: {0}".format(action_result.get_message()))
+            return self.set_status(phantom.APP_ERROR, f"Failed to get events: {action_result.get_message()}")
 
-        self.save_progress("Total events: {0}".format(resp_json.get("count", "NA")))
+        self.save_progress("Total events: {}".format(resp_json.get("count", "NA")))
 
         events = resp_json.get("events", [])
         no_of_events = len(events)
-        self.save_progress("Processing {0} events".format(no_of_events))
+        self.save_progress(f"Processing {no_of_events} events")
 
         results = []
 
         for i, event in enumerate(events):
-
-            self.send_progress("Processing Container # {0}".format(i))
+            self.send_progress(f"Processing Container # {i}")
 
             container = dict()
 
@@ -890,7 +864,6 @@ class ProtectWiseConnector(BaseConnector):
 
         # store the date time of the last event
         if (no_of_events) and (not self.is_poll_now()):
-
             config = self.get_config()
 
             last_date_time = events[0]["startedAt"]
@@ -905,15 +878,14 @@ class ProtectWiseConnector(BaseConnector):
                 self.debug_print(
                     "Getting all containers with the same date, down to the millisecond."
                     " That means the device is generating"
-                    " max_containers=({0}) per second."
-                    " Skipping to the next second to not get stuck.".format(config[PROTECTWISE_JSON_MAX_CONTAINERS])
+                    f" max_containers=({config[PROTECTWISE_JSON_MAX_CONTAINERS]}) per second."
+                    " Skipping to the next second to not get stuck."
                 )
                 self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = int(self._state[PROTECTWISE_JSON_LAST_DATE_TIME]) + 1
 
         return self.set_status(phantom.APP_SUCCESS)
 
     def handle_action(self, param):
-
         action = self.get_action_identifier()
 
         if action == phantom.ACTION_ID_INGEST_ON_POLL:
@@ -922,7 +894,7 @@ class ProtectWiseConnector(BaseConnector):
             end_time = time.time()
             diff_time = end_time - start_time
             human_time = str(timedelta(seconds=int(diff_time)))
-            self.save_progress("Time taken: {0}".format(human_time))
+            self.save_progress(f"Time taken: {human_time}")
         elif action == ACTION_ID_TEST_ASSET_CONNECTIVITY:
             result = self._test_connectivity(param)
         elif action == ACTION_ID_GET_PACKETS:
@@ -938,7 +910,6 @@ class ProtectWiseConnector(BaseConnector):
 
 
 if __name__ == "__main__":
-
     import argparse
     import sys
 
@@ -961,7 +932,6 @@ if __name__ == "__main__":
     verify = args.verify
 
     if username is not None and password is None:
-
         # User specified a username but not a password, so ask
         import getpass
 
