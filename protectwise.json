@@ -2114,11 +2114,5 @@
             "output": [],
             "versions": "EQ(*)"
         }
-    ],
-    "pip_dependencies": {
-        "wheel": []
-    },
-    "pip39_dependencies": {
-        "wheel": []
-    }
+    ]
 }
