@@ -905,6 +905,9 @@ class ProtectWiseConnector(BaseConnector):
             result = self._hunt_domain(param)
         elif action == ACTION_ID_HUNT_FILE:
             result = self._hunt_file(param)
+        else:
+            action_result = ActionResult(param)
+            result = action_result.set_status(phantom.APP_ERROR, f"Unsupported action: {action}")
 
         return result
 
