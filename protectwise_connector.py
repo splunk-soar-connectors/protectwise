@@ -755,7 +755,7 @@ class ProtectWiseConnector(BaseConnector):
                 cef["sensorId"] = observation["sensorId"]
 
             if self._display_dup_artifacts is True:
-                cef["receiptTime"] = self._get_str_from_epoch(int(round(time.time() * 1000)))
+                cef["receiptTime"] = self._get_str_from_epoch(round(time.time() * 1000))
 
             artifacts.append(artifact)
 
@@ -844,7 +844,7 @@ class ProtectWiseConnector(BaseConnector):
             container["source_data_identifier"] = event["id"]
             if self._display_dup_containers is True:
                 container["source_data_identifier"] = "{} container_created:{}".format(
-                    container["source_data_identifier"], self._get_str_from_epoch(int(round(time.time() * 1000)))
+                    container["source_data_identifier"], self._get_str_from_epoch(round(time.time() * 1000))
                 )
             container["name"] = event["message"]
             container["start_time"] = self._get_str_from_epoch(event["startedAt"])
