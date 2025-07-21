@@ -755,7 +755,7 @@ class ProtectWiseConnector(BaseConnector):
                 cef["sensorId"] = observation["sensorId"]
 
             if self._display_dup_artifacts is True:
-                cef["receiptTime"] = self._get_str_from_epoch(int(round(time.time() * 1000)))
+                cef["receiptTime"] = self._get_str_from_epoch(round(time.time() * 1000))
 
             artifacts.append(artifact)
 
@@ -844,7 +844,7 @@ class ProtectWiseConnector(BaseConnector):
             container["source_data_identifier"] = event["id"]
             if self._display_dup_containers is True:
                 container["source_data_identifier"] = "{} container_created:{}".format(
-                    container["source_data_identifier"], self._get_str_from_epoch(int(round(time.time() * 1000)))
+                    container["source_data_identifier"], self._get_str_from_epoch(round(time.time() * 1000))
                 )
             container["name"] = event["message"]
             container["start_time"] = self._get_str_from_epoch(event["startedAt"])
@@ -905,6 +905,9 @@ class ProtectWiseConnector(BaseConnector):
             result = self._hunt_domain(param)
         elif action == ACTION_ID_HUNT_FILE:
             result = self._hunt_file(param)
+        else:
+            action_result = ActionResult(param)
+            result = action_result.set_status(phantom.APP_ERROR, f"Unsupported action: {action}")
 
         return result
 
