@@ -1,7 +1,7 @@
 # ProtectWise
 
 Publisher: Splunk <br>
-Connector Version: 2.1.2 <br>
+Connector Version: 2.1.3 <br>
 Product Vendor: ProtectWise <br>
 Product Name: ProtectWise <br>
 Minimum Product Version: 6.2.1
