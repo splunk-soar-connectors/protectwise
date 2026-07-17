@@ -1,6 +1,6 @@
 # File: protectwise_connector.py
 #
-# Copyright (c) 2016-2025 Splunk Inc.
+# Copyright (c) 2016-2026 Splunk Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -270,7 +270,7 @@ class ProtectWiseConnector(BaseConnector):
 
         action_result = self.add_action_result(ActionResult(param))
 
-        ret_val, resp_json = self._get_sensor_list(action_result)
+        ret_val, _resp_json = self._get_sensor_list(action_result)
 
         if phantom.is_fail(ret_val):
             self.save_progress("Test Connectivity Failed")
