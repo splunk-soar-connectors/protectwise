@@ -564,7 +564,6 @@ class ProtectWiseConnector(BaseConnector):
                 return action_result.get_status(), None
 
         elif self._state.get("first_run", True):
-            self._state["first_run"] = False
             limit = config.get("first_run_max_events", 100)
 
             if not self.is_positive_non_zero_int(limit):
@@ -591,9 +590,6 @@ class ProtectWiseConnector(BaseConnector):
         query_params["maxLimit"] = limit
         query_params["minLimit"] = limit
         query_params["end"] = self._time_now()
-
-        if not self.is_poll_now():
-            self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = query_params["end"]
 
         return phantom.APP_SUCCESS, query_params
 
@@ -770,6 +766,7 @@ class ProtectWiseConnector(BaseConnector):
 
     def _save_results(self, results):
         containers_processed = 0
+        failed_event_times = []
         for i, result in enumerate(results):
             # result is a dictionary of a single container and artifacts
             if "container" not in result:
@@ -790,9 +787,11 @@ class ProtectWiseConnector(BaseConnector):
             self.debug_print(f"save_container returns, value: {ret_val}, reason: {response}, id: {container_id}")
 
             if phantom.is_fail(ret_val):
+                failed_event_times.append(result["container"]["data"]["startedAt"])
                 continue
 
             if not container_id:
+                failed_event_times.append(result["container"]["data"]["startedAt"])
                 continue
 
             if "artifacts" not in result:
@@ -802,6 +801,7 @@ class ProtectWiseConnector(BaseConnector):
 
             # get the length of the artifact, we might have trimmed it or not
             len_artifacts = len(artifacts)
+            artifact_save_failed = False
 
             for j, artifact in enumerate(artifacts):
                 # if it is the last artifact of the last container
@@ -813,8 +813,13 @@ class ProtectWiseConnector(BaseConnector):
                 self.send_progress(f"Adding Container # {i}, Artifact # {j}")
                 ret_val, status_string, artifact_id = self.save_artifact(artifact)
                 self.debug_print(f"save_artifact returns, value: {ret_val}, reason: {status_string}, id: {artifact_id}")
+                if phantom.is_fail(ret_val):
+                    artifact_save_failed = True
 
-        return containers_processed
+            if artifact_save_failed:
+                failed_event_times.append(result["container"]["data"]["startedAt"])
+
+        return containers_processed, failed_event_times
 
     def _on_poll(self, param):
         action_result = ActionResult(param)
@@ -863,10 +868,28 @@ class ProtectWiseConnector(BaseConnector):
             results.append({"container": container, "artifacts": artifacts})
 
         self.send_progress("Done Processing")
-        self._save_results(results)
+        _containers_processed, failed_event_times = self._save_results(results)
 
-        # store the date time of the last event
-        if (no_of_events) and (not self.is_poll_now()):
+        if not self.is_poll_now():
+            self._state["first_run"] = False
+
+        if failed_event_times and not self.is_poll_now():
+            retry_from = min(failed_event_times) - 1
+            query_start = query_params.get("start")
+            if query_start is not None:
+                retry_from = max(retry_from, int(query_start))
+            self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = retry_from
+            return self.set_status(
+                phantom.APP_ERROR,
+                f"Failed to save {len(failed_event_times)} event(s); the ingestion checkpoint was retained for retry",
+            )
+
+        # Store the query boundary after a successful empty response, or the
+        # newest durably processed event when the response contained events.
+        if not self.is_poll_now():
+            self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = query_params["end"]
+
+        if no_of_events and not self.is_poll_now():
             config = self.get_config()
 
             last_date_time = events[0]["startedAt"]
