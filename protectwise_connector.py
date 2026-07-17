@@ -304,7 +304,7 @@ class ProtectWiseConnector(BaseConnector):
             info_endpoint = f"/pcaps/{packet_type}s/{encoded_sensor_id}/{encoded_object_id}/info"
             file_endpoint = f"/pcaps/{packet_type}s/{encoded_sensor_id}/{encoded_object_id}"
 
-        ret_val, file_info = self._make_rest_call(info_endpoint, action_result, exception_error_codes=[404, 505])
+        ret_val, file_info = self._make_rest_call(info_endpoint, action_result, exception_error_codes=[404])
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -431,7 +431,7 @@ class ProtectWiseConnector(BaseConnector):
             "end": end_time,
         }
 
-        ret_val, response = self._make_rest_call(endpoint, action_result, params=params, exception_error_codes=[404, 505])
+        ret_val, response = self._make_rest_call(endpoint, action_result, params=params)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -464,7 +464,7 @@ class ProtectWiseConnector(BaseConnector):
 
         params = {"details": "threat,domain,device", "include": "netflows", "start": start_time, "end": end_time}
 
-        ret_val, response = self._make_rest_call(endpoint, action_result, params=params, exception_error_codes=[404, 505])
+        ret_val, response = self._make_rest_call(endpoint, action_result, params=params)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
@@ -499,7 +499,7 @@ class ProtectWiseConnector(BaseConnector):
 
         params = {"details": "threat,ip,device", "include": "netflows", "start": start_time, "end": end_time}
 
-        ret_val, response = self._make_rest_call(endpoint, action_result, params=params, exception_error_codes=[404, 505])
+        ret_val, response = self._make_rest_call(endpoint, action_result, params=params)
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
