@@ -99,7 +99,7 @@ and limitations under the License.
               </td>
               <td>
                 <a href="javascript:;"
-                   onclick="context_menu(this, [{'contains': ['protectwise event id'], 'value': '{{ result.param.id }}' }], 0, {{ container.id }}, null, false);">
+                   onclick="context_menu(this, [{'contains': ['protectwise event id'], 'value': '{{ result.param.id|escapejs }}' }], 0, {{ container.id }}, null, false);">
                   {{ result.param.id }}
                   &nbsp;<span class="fa fa-caret-down" style="font-size: smaller;"></span>
                 </a>
@@ -110,7 +110,7 @@ and limitations under the License.
               </td>
               <td>
                 <a href="javascript:;"
-                   onclick="context_menu(this, [{'contains': ['protectwise observation id'], 'value': '{{ result.param.id }}' }], 0, {{ container.id }}, null, false);">
+                   onclick="context_menu(this, [{'contains': ['protectwise observation id'], 'value': '{{ result.param.id|escapejs }}' }], 0, {{ container.id }}, null, false);">
                   {{ result.param.id }}
                   &nbsp;<span class="fa fa-caret-down" style="font-size: smaller;"></span>
                 </a>
@@ -125,7 +125,7 @@ and limitations under the License.
             </td>
             <td>
               <a href="javascript:;"
-                 onclick="context_menu(this, [{'contains': ['protectwise sensor id'], 'value': '{{ result.param.sensor_id }}' }], 0, {{ container.id }}, null, false);">
+                 onclick="context_menu(this, [{'contains': ['protectwise sensor id'], 'value': '{{ result.param.sensor_id|escapejs }}' }], 0, {{ container.id }}, null, false);">
                 {{ result.param.sensor_id }}
                 &nbsp;<span class="fa fa-caret-down" style="font-size: smaller;"></span>
               </a>
@@ -169,7 +169,7 @@ and limitations under the License.
               <td>{{ curr_nf.flowId }}</td>
               <td>
                 <a href="javascript:;"
-                   onclick="context_menu(this, [{'contains': ['protectwise sensor id'], 'value': '{{ curr_nf.sensorId }}' }], 0, {{ container.id }}, null, false);">
+                   onclick="context_menu(this, [{'contains': ['protectwise sensor id'], 'value': '{{ curr_nf.sensorId|escapejs }}' }], 0, {{ container.id }}, null, false);">
                   {{ curr_nf.sensorId }}
                   &nbsp;<span class="fa fa-caret-down" style="font-size: smaller;"></span>
                 </a>

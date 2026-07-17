@@ -1,3 +1,3 @@
 **Unreleased**
 
-* Chore: update connector development hooks.
+* Escape connector output before embedding values in widget JavaScript contexts.
