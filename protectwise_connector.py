@@ -20,6 +20,7 @@ import os
 import tempfile
 import time
 from datetime import datetime, timedelta
+from urllib.parse import quote
 
 import phantom.app as phantom
 import phantom.rules as ph_rules
@@ -291,15 +292,17 @@ class ProtectWiseConnector(BaseConnector):
         if packet_type not in VALID_PROTECTWISE_TYPES:
             return action_result.set_status(phantom.APP_ERROR, "Invalid type")
 
-        info_endpoint = f"/pcaps/{packet_type}s/{object_id}/info"
-        file_endpoint = f"/pcaps/{packet_type}s/{object_id}"
+        encoded_object_id = quote(str(object_id), safe="")
+        info_endpoint = f"/pcaps/{packet_type}s/{encoded_object_id}/info"
+        file_endpoint = f"/pcaps/{packet_type}s/{encoded_object_id}"
 
         if packet_type == "observation":
             if not sensor_id:
                 return action_result.set_status(phantom.APP_ERROR, f"{PROTECTWISE_JSON_SENSOR_ID} is required when type is observation")
 
-            info_endpoint = f"/pcaps/{packet_type}s/{sensor_id}/{object_id}/info"
-            file_endpoint = f"/pcaps/{packet_type}s/{sensor_id}/{object_id}"
+            encoded_sensor_id = quote(str(sensor_id), safe="")
+            info_endpoint = f"/pcaps/{packet_type}s/{encoded_sensor_id}/{encoded_object_id}/info"
+            file_endpoint = f"/pcaps/{packet_type}s/{encoded_sensor_id}/{encoded_object_id}"
 
         ret_val, file_info = self._make_rest_call(info_endpoint, action_result, exception_error_codes=[404, 505])
         if phantom.is_fail(ret_val):
@@ -420,7 +423,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = f"/reputations/files/{file_hash}"
+        endpoint = f"/reputations/files/{quote(str(file_hash), safe='')}"
 
         params = {
             # 'details': 'threat,ip,domain,device',
@@ -457,7 +460,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = f"/reputations/domains/{domain}"
+        endpoint = f"/reputations/domains/{quote(str(domain), safe='')}"
 
         params = {"details": "threat,domain,device", "include": "netflows", "start": start_time, "end": end_time}
 
@@ -492,7 +495,7 @@ class ProtectWiseConnector(BaseConnector):
         if phantom.is_fail(ret_val):
             return action_result.get_status()
 
-        endpoint = f"/reputations/ips/{ip}"
+        endpoint = f"/reputations/ips/{quote(str(ip), safe='')}"
 
         params = {"details": "threat,ip,device", "include": "netflows", "start": start_time, "end": end_time}
 
