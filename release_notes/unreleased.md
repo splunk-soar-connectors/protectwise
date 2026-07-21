@@ -1,1 +1,4 @@
 **Unreleased**
+
+* Render ingested ProtectWise event timestamps as true UTC instants.
+* Remove Unicode format controls and NULs from ingested display and CEF values.
