@@ -31,6 +31,7 @@ from phantom.base_connector import BaseConnector
 from phantom.vault import Vault
 
 from protectwise_consts import *
+from protectwise_security import format_epoch_millis_utc, sanitize_external_value
 
 
 class RetVal2(tuple):
@@ -597,17 +598,17 @@ class ProtectWiseConnector(BaseConnector):
         default_name = "Observation Artifact"
 
         try:
-            return observation["data"]["idsEvent"]["description"]
+            return sanitize_external_value(observation["data"]["idsEvent"]["description"])
         except:
             pass
 
         try:
-            return "{} Observation from {}".format(observation["killChainStage"], observation["source"])
+            return sanitize_external_value("{} Observation from {}".format(observation["killChainStage"], observation["source"]))
         except:
             pass
 
         try:
-            return "Observation from {}".format(observation["source"])
+            return sanitize_external_value("Observation from {}".format(observation["source"]))
         except:
             pass
 
@@ -756,13 +757,15 @@ class ProtectWiseConnector(BaseConnector):
             if self._display_dup_artifacts is True:
                 cef["receiptTime"] = self._get_str_from_epoch(round(time.time() * 1000))
 
+            artifact["cef"] = sanitize_external_value(cef)
+
             artifacts.append(artifact)
 
         return artifacts
 
     def _get_str_from_epoch(self, epoch_milli):
         # 2015-07-21T00:27:59Z
-        return datetime.fromtimestamp(int(epoch_milli) / 1000.0).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        return format_epoch_millis_utc(epoch_milli)
 
     def _save_results(self, results):
         containers_processed = 0
@@ -854,7 +857,7 @@ class ProtectWiseConnector(BaseConnector):
                 container["source_data_identifier"] = "{} container_created:{}".format(
                     container["source_data_identifier"], self._get_str_from_epoch(round(time.time() * 1000))
                 )
-            container["name"] = event["message"]
+            container["name"] = sanitize_external_value(event["message"])
             container["start_time"] = self._get_str_from_epoch(event["startedAt"])
             container["end_time"] = self._get_str_from_epoch(event["endedAt"])
             container["id"] = event["id"]
