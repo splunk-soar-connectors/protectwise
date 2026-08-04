@@ -18,6 +18,7 @@
 import calendar
 import json
 import os
+import struct
 import tempfile
 import time
 from datetime import datetime, timedelta
@@ -705,7 +706,40 @@ class ProtectWiseConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
-        return phantom.APP_SUCCESS
+        return self._validate_pcap_file(action_result, local_file_path)
+
+    def _validate_pcap_file(self, action_result, local_file_path):
+        try:
+            with open(local_file_path, "rb") as file_handle:
+                header = file_handle.read(24)
+                file_handle.seek(0)
+                error_body = file_handle.read(1024 * 1024)
+        except OSError as e:
+            return action_result.set_status(phantom.APP_ERROR, "Error validating downloaded file", e)
+
+        pcap_endianness = {
+            b"\xa1\xb2\xc3\xd4": ">",
+            b"\xd4\xc3\xb2\xa1": "<",
+            b"\xa1\xb2\x3c\x4d": ">",
+            b"\x4d\x3c\xb2\xa1": "<",
+        }
+        endianness = pcap_endianness.get(header[:4])
+        if endianness and len(header) == 24:
+            version_major, version_minor = struct.unpack(f"{endianness}HH", header[4:8])
+            if (version_major, version_minor) == (2, 4):
+                return phantom.APP_SUCCESS
+
+        error_message = "Downloaded data is not a valid tcpdump PCAP file"
+        try:
+            response_body = json.loads(error_body)
+            if isinstance(response_body, dict):
+                error_details = response_body.get("error")
+                if isinstance(error_details, dict) and error_details.get("message"):
+                    error_message = f"Server returned error while downloading PCAP: {sanitize_external_value(error_details['message'])}"
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+
+        return action_result.set_status(phantom.APP_ERROR, error_message)
 
     def _create_artifacts_for_event(self, event, action_result, container_index):
         artifacts = []
