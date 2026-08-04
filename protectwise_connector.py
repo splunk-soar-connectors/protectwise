@@ -689,7 +689,7 @@ class ProtectWiseConnector(BaseConnector):
 
         # if the file is big then download in % increments
         if bytes_to_download > big_file_size_bytes:
-            block_size = (bytes_to_download * percent_block) / 100
+            block_size = max(1, bytes_to_download * percent_block // 100)
 
         bytes_downloaded = 0
 
