@@ -199,11 +199,12 @@ class ProtectWiseConnector(BaseConnector):
                 action_result.add_debug_data({"r_text": "response is None"})
 
         self.debug_print(f"Response headers: {response.headers}")
+        content_type = response.headers.get("Content-Type", "")
         # There are just too many differences in the response to handle all of them in the same function
-        if ("json" in response.headers.get("Content-Type", "")) or ("javascript" in response.headers.get("Content-Type")):
+        if ("json" in content_type) or ("javascript" in content_type):
             return self._process_json_response(response, exception_error_codes, action_result)
 
-        if "html" in response.headers.get("Content-Type", ""):
+        if "html" in content_type:
             return self._process_html_response(response, exception_error_codes, action_result)
 
         # it's not an html or json, handle if it is a successful empty response
