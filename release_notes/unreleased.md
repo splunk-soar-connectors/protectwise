@@ -6,3 +6,4 @@
 * Reject invalid or out-of-window ProtectWise event timestamps without advancing the polling checkpoint.
 * Use integer chunk sizes when downloading ProtectWise PCAP files larger than 20 MiB.
 * Validate downloaded tcpdump PCAP headers before adding capture data to the SOAR vault.
+* Bound streamed PCAP downloads by the SOAR platform configurable vault attachment limit.

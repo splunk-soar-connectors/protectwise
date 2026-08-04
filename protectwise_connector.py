@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import phantom.app as phantom
+import phantom.config as ph_config
 import phantom.rules as ph_rules
 import requests
 from bs4 import BeautifulSoup
@@ -293,6 +294,32 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress("Test Connectivity Passed")
         return action_result.set_status(phantom.APP_SUCCESS)
 
+    def _get_vault_attachment_limit(self, action_result):
+        url = f"{self.get_phantom_base_url()}rest/system_settings"
+        params = {"sections": json.dumps(["max_size_mb_vault_attachment"])}
+
+        try:
+            response = requests.get(url, params=params, verify=ph_config.platform_strict_tls, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
+            response.raise_for_status()
+            settings = response.json()
+        except (requests.RequestException, ValueError) as e:
+            return action_result.set_status(phantom.APP_ERROR, "Unable to get the platform vault attachment limit", e), None
+
+        if not isinstance(settings, dict):
+            return action_result.set_status(phantom.APP_ERROR, "Platform returned an invalid vault attachment limit response"), None
+
+        ret_val, limit_mb = self._validate_integer(
+            action_result,
+            settings.get("max_size_mb_vault_attachment"),
+            "'Maximum vault attachment size' platform configuration",
+        )
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
+        if limit_mb is None:
+            return action_result.set_status(phantom.APP_ERROR, "Platform vault attachment limit is unavailable"), None
+
+        return phantom.APP_SUCCESS, limit_mb * 1024 * 1024
+
     def _get_packets(self, param):
         action_result = self.add_action_result(ActionResult(param))
 
@@ -329,45 +356,68 @@ class ProtectWiseConnector(BaseConnector):
 
         action_result.add_data(file_info)
 
+        ret_val, max_file_size = self._get_vault_attachment_limit(action_result)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
         # Now download the file
         file_name = f"{object_id}.pcap"
 
         if hasattr(Vault, "get_vault_tmp_dir"):
-            tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir())
+            tmp_dir = Vault.get_vault_tmp_dir()
         else:
-            tmp = tempfile.NamedTemporaryFile(dir="/vault/tmp/", delete=False)
+            tmp_dir = "/vault/tmp/"
 
-        params = {"filename": file_name}
-
-        estimated_size = file_info.get("estimatedSize", None)
-
-        ret_val = self._download_file(file_endpoint, action_result, tmp.name, params, estimated_size)
-
-        if phantom.is_fail(ret_val):
-            return action_result.get_status()
-
-        # MOVE the file to the vault
-        vault_attach_dict = {}
-
-        self.debug_print(f"Vault file name: {file_name}")
-
-        vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = self.get_action_name()
-        vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
-        vault_attach_dict["contains"] = ["pcap"]
+        tmp = tempfile.NamedTemporaryFile(dir=tmp_dir, delete=False)
+        tmp.close()
 
         try:
-            success, message, vault_id = ph_rules.vault_add(self.get_container_id(), tmp.name, file_name, vault_attach_dict)
-        except Exception as e:
-            self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
-            return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
+            params = {"filename": file_name}
+            estimated_size = file_info.get("estimatedSize", None)
+            if estimated_size is not None:
+                try:
+                    estimated_size = int(estimated_size)
+                except (TypeError, ValueError):
+                    return action_result.set_status(phantom.APP_ERROR, "ProtectWise returned an invalid estimated PCAP size")
+                if estimated_size <= 0:
+                    return action_result.set_status(phantom.APP_ERROR, "ProtectWise returned an invalid estimated PCAP size")
+                if estimated_size > max_file_size:
+                    return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
 
-        if not success:
-            self.debug_print(f"Failed to add file to Vault: {message}")
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to add the file to Vault: {message}")
+            ret_val = self._download_file(file_endpoint, action_result, tmp.name, params, max_file_size, estimated_size)
 
-        action_result.set_summary({"vault_id": vault_id})
+            if phantom.is_fail(ret_val):
+                return action_result.get_status()
 
-        return action_result.set_status(phantom.APP_SUCCESS)
+            # MOVE the file to the vault
+            vault_attach_dict = {}
+
+            self.debug_print(f"Vault file name: {file_name}")
+
+            vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = self.get_action_name()
+            vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
+            vault_attach_dict["contains"] = ["pcap"]
+
+            try:
+                success, message, vault_id = ph_rules.vault_add(self.get_container_id(), tmp.name, file_name, vault_attach_dict)
+            except Exception as e:
+                self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
+                return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
+
+            if not success:
+                self.debug_print(f"Failed to add file to Vault: {message}")
+                return action_result.set_status(phantom.APP_ERROR, f"Failed to add the file to Vault: {message}")
+
+            action_result.set_summary({"vault_id": vault_id})
+
+            return action_result.set_status(phantom.APP_SUCCESS)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                self.debug_print(f"Unable to remove temporary PCAP file: {e!s}")
 
     def _parse_time(self, param_name, time_str, action_result):
         ret_val = None
@@ -636,7 +686,7 @@ class ProtectWiseConnector(BaseConnector):
 
         return default_name
 
-    def _download_file(self, url_to_download, action_result, local_file_path, params, estimated_size=None):
+    def _download_file(self, url_to_download, action_result, local_file_path, params, max_file_size, estimated_size=None):
         """Function that downloads the file from a url
 
         Args:
@@ -669,44 +719,60 @@ class ProtectWiseConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
-        if r.status_code != requests.codes.ok:  # pylint: disable=E1101
-            return action_result.set_status(phantom.APP_ERROR, f"Server returned status_code: {r.status_code}")
-
-        # get the content length
-        content_size = r.headers.get("content-length")
-
-        if not content_size and estimated_size is not None:
-            content_size = estimated_size
-
-        if not content_size:
-            return action_result.set_status(phantom.APP_ERROR, "Unable to get content length")
-
-        self.save_progress(phantom.APP_PROG_FILE_SIZE, value=content_size, type="bytes")
-
-        bytes_to_download = int(content_size)
-
-        # init to download the whole file in a single read
-        block_size = bytes_to_download
-
-        # if the file is big then download in % increments
-        if bytes_to_download > big_file_size_bytes:
-            block_size = max(1, bytes_to_download * percent_block // 100)
-
-        bytes_downloaded = 0
-
         try:
-            with open(local_file_path, "wb") as file_handle:
-                for chunk in r.iter_content(chunk_size=block_size):
-                    if chunk:
+            if r.status_code != requests.codes.ok:  # pylint: disable=E1101
+                return action_result.set_status(phantom.APP_ERROR, f"Server returned status_code: {r.status_code}")
+
+            # Transfer-Encoding takes precedence over Content-Length under RFC 9112.
+            content_size = None if r.headers.get("transfer-encoding") else r.headers.get("content-length")
+
+            if not content_size and estimated_size is not None:
+                content_size = estimated_size
+
+            if not content_size:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to get content length")
+
+            try:
+                bytes_to_download = int(content_size)
+            except (TypeError, ValueError):
+                return action_result.set_status(phantom.APP_ERROR, "Invalid content length returned by server")
+
+            if bytes_to_download <= 0:
+                return action_result.set_status(phantom.APP_ERROR, "Invalid content length returned by server")
+
+            if bytes_to_download > max_file_size:
+                return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
+
+            self.save_progress(phantom.APP_PROG_FILE_SIZE, value=bytes_to_download, type="bytes")
+
+            # init to download the whole file in a single read
+            block_size = bytes_to_download
+
+            # if the file is big then download in % increments
+            if bytes_to_download > big_file_size_bytes:
+                block_size = max(1, bytes_to_download * percent_block // 100)
+
+            bytes_downloaded = 0
+
+            try:
+                with open(local_file_path, "wb") as file_handle:
+                    for chunk in r.iter_content(chunk_size=block_size):
+                        if not chunk:
+                            continue
+                        if bytes_downloaded + len(chunk) > max_file_size:
+                            return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
                         bytes_downloaded += len(chunk)
                         file_handle.write(chunk)
                         file_handle.flush()
                         os.fsync(file_handle.fileno())
-                        self.send_progress(PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS, float(bytes_downloaded) / float(bytes_to_download))
-        except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
+                        progress = min(1.0, float(bytes_downloaded) / float(bytes_to_download))
+                        self.send_progress(PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS, progress)
+            except Exception as e:
+                return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
-        return self._validate_pcap_file(action_result, local_file_path)
+            return self._validate_pcap_file(action_result, local_file_path)
+        finally:
+            r.close()
 
     def _validate_pcap_file(self, action_result, local_file_path):
         try:
