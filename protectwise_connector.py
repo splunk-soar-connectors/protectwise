@@ -710,7 +710,8 @@ class ProtectWiseConnector(BaseConnector):
         # we need to get the details of the event
         ret_val, resp_json = self._make_rest_call(f"/events/{event_id}", action_result)
         if phantom.is_fail(ret_val):
-            return self.set_status(phantom.APP_ERROR, f"Failed to get events: {action_result.get_message()}")
+            self.set_status(phantom.APP_ERROR, f"Failed to get event details: {action_result.get_message()}")
+            return None
 
         observations = resp_json.get("observations")
 
@@ -856,6 +857,7 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress(f"Processing {no_of_events} events")
 
         results = []
+        detail_failed_event_times = []
 
         for i, event in enumerate(events):
             self.send_progress(f"Processing Container # {i}")
@@ -878,14 +880,24 @@ class ProtectWiseConnector(BaseConnector):
                 container["tags"] = tags.split(",")
 
             artifacts = self._create_artifacts_for_event(event, action_result, i)
+            if artifacts is None:
+                detail_failed_event_times.append(event["startedAt"])
+                continue
 
             results.append({"container": container, "artifacts": artifacts})
 
         self.send_progress("Done Processing")
         _containers_processed, failed_event_times = self._save_results(results)
+        failed_event_times.extend(detail_failed_event_times)
 
         if not self.is_poll_now():
             self._state["first_run"] = False
+
+        if detail_failed_event_times and self.is_poll_now():
+            return self.set_status(
+                phantom.APP_ERROR,
+                f"Failed to retrieve details for {len(detail_failed_event_times)} event(s)",
+            )
 
         if failed_event_times and not self.is_poll_now():
             retry_from = min(failed_event_times) - 1
@@ -895,7 +907,7 @@ class ProtectWiseConnector(BaseConnector):
             self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = retry_from
             return self.set_status(
                 phantom.APP_ERROR,
-                f"Failed to save {len(failed_event_times)} event(s); the ingestion checkpoint was retained for retry",
+                f"Failed to process {len(failed_event_times)} event(s); the ingestion checkpoint was retained for retry",
             )
 
         # Store the query boundary after a successful empty response, or the
