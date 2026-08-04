@@ -603,6 +603,16 @@ class ProtectWiseConnector(BaseConnector):
         query_params["minLimit"] = limit
         query_params["end"] = self._time_now()
 
+        try:
+            query_start = self._normalize_epoch_millis(query_params["start"])[0]
+        except (TypeError, ValueError, OverflowError, OSError):
+            return action_result.set_status(phantom.APP_ERROR, "Stored poll checkpoint is not a valid epoch millisecond value"), None
+
+        if query_start < 0 or query_start > query_params["end"]:
+            return action_result.set_status(phantom.APP_ERROR, "Stored poll checkpoint is outside the current query window"), None
+
+        query_params["start"] = query_start
+
         return phantom.APP_SUCCESS, query_params
 
     def _get_artifact_name(self, observation):
@@ -779,6 +789,12 @@ class ProtectWiseConnector(BaseConnector):
         # 2015-07-21T00:27:59Z
         return format_epoch_millis_utc(epoch_milli)
 
+    def _normalize_epoch_millis(self, value):
+        if isinstance(value, bool):
+            raise ValueError("Boolean values are not epoch milliseconds")
+        normalized = int(value)
+        return normalized, self._get_str_from_epoch(normalized)
+
     def _save_results(self, results):
         containers_processed = 0
         failed_event_times = []
@@ -856,10 +872,26 @@ class ProtectWiseConnector(BaseConnector):
         no_of_events = len(events)
         self.save_progress(f"Processing {no_of_events} events")
 
+        event_times = []
+        for event in events:
+            if not isinstance(event, dict):
+                return self.set_status(phantom.APP_ERROR, "ProtectWise returned an event with an unsupported response shape")
+
+            try:
+                started_at, start_time = self._normalize_epoch_millis(event["startedAt"])
+                _ended_at, end_time = self._normalize_epoch_millis(event["endedAt"])
+            except (KeyError, TypeError, ValueError, OverflowError, OSError) as e:
+                return self.set_status(phantom.APP_ERROR, f"ProtectWise returned an event with an invalid timestamp: {e!s}")
+
+            if not query_params["start"] <= started_at < query_params["end"]:
+                return self.set_status(phantom.APP_ERROR, "ProtectWise returned an event timestamp outside the requested query window")
+
+            event_times.append((started_at, start_time, end_time))
+
         results = []
         detail_failed_event_times = []
 
-        for i, event in enumerate(events):
+        for i, (event, (started_at, start_time, end_time)) in enumerate(zip(events, event_times)):
             self.send_progress(f"Processing Container # {i}")
 
             container = dict()
@@ -871,8 +903,8 @@ class ProtectWiseConnector(BaseConnector):
                     container["source_data_identifier"], self._get_str_from_epoch(round(time.time() * 1000))
                 )
             container["name"] = sanitize_external_value(event["message"])
-            container["start_time"] = self._get_str_from_epoch(event["startedAt"])
-            container["end_time"] = self._get_str_from_epoch(event["endedAt"])
+            container["start_time"] = start_time
+            container["end_time"] = end_time
             container["id"] = event["id"]
 
             tags = event.get("tags")
@@ -881,7 +913,7 @@ class ProtectWiseConnector(BaseConnector):
 
             artifacts = self._create_artifacts_for_event(event, action_result, i)
             if artifacts is None:
-                detail_failed_event_times.append(event["startedAt"])
+                detail_failed_event_times.append(started_at)
                 continue
 
             results.append({"container": container, "artifacts": artifacts})
@@ -918,11 +950,11 @@ class ProtectWiseConnector(BaseConnector):
         if no_of_events and not self.is_poll_now():
             config = self.get_config()
 
-            last_date_time = events[0]["startedAt"]
+            last_date_time = event_times[0][0]
 
             self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = last_date_time
 
-            date_strings = [x["startedAt"] for x in events]
+            date_strings = [event_time[0] for event_time in event_times]
 
             date_strings = set(date_strings)
 
