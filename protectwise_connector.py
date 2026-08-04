@@ -15,6 +15,7 @@
 #
 #
 # Phantom imports
+import calendar
 import json
 import os
 import tempfile
@@ -372,7 +373,7 @@ class ProtectWiseConnector(BaseConnector):
         try:
             dt = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
             dt_tt = dt.timetuple()
-            ret_val = int(time.mktime(dt_tt)) * 1000
+            ret_val = calendar.timegm(dt_tt) * 1000
         except Exception as e:
             action_result.set_status(phantom.APP_ERROR, f"Unable to parse {param_name} value {time_str}, Error: {e!s}")
 
