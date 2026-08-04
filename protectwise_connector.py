@@ -170,6 +170,15 @@ class ProtectWiseConnector(BaseConnector):
             # Let's not parse it here
             return RetVal2(phantom.APP_SUCCESS, resp_json)
 
+        if not isinstance(resp_json, dict):
+            return RetVal2(
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    PROTECTWISE_ERR_PARSE_JSON_RESPONSE.format("Expected a JSON object or list"),
+                ),
+                response,
+            )
+
         failed = resp_json.get("failed", False)
 
         if failed:
