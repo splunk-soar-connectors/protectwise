@@ -15,14 +15,17 @@
 #
 #
 # Phantom imports
+import calendar
 import json
 import os
+import struct
 import tempfile
 import time
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import phantom.app as phantom
+import phantom.config as ph_config
 import phantom.rules as ph_rules
 import requests
 from bs4 import BeautifulSoup
@@ -170,6 +173,15 @@ class ProtectWiseConnector(BaseConnector):
             # Let's not parse it here
             return RetVal2(phantom.APP_SUCCESS, resp_json)
 
+        if not isinstance(resp_json, dict):
+            return RetVal2(
+                action_result.set_status(
+                    phantom.APP_ERROR,
+                    PROTECTWISE_ERR_PARSE_JSON_RESPONSE.format("Expected a JSON object or list"),
+                ),
+                response,
+            )
+
         failed = resp_json.get("failed", False)
 
         if failed:
@@ -199,11 +211,12 @@ class ProtectWiseConnector(BaseConnector):
                 action_result.add_debug_data({"r_text": "response is None"})
 
         self.debug_print(f"Response headers: {response.headers}")
+        content_type = response.headers.get("Content-Type", "")
         # There are just too many differences in the response to handle all of them in the same function
-        if ("json" in response.headers.get("Content-Type", "")) or ("javascript" in response.headers.get("Content-Type")):
+        if ("json" in content_type) or ("javascript" in content_type):
             return self._process_json_response(response, exception_error_codes, action_result)
 
-        if "html" in response.headers.get("Content-Type", ""):
+        if "html" in content_type:
             return self._process_html_response(response, exception_error_codes, action_result)
 
         # it's not an html or json, handle if it is a successful empty response
@@ -281,6 +294,32 @@ class ProtectWiseConnector(BaseConnector):
         self.save_progress("Test Connectivity Passed")
         return action_result.set_status(phantom.APP_SUCCESS)
 
+    def _get_vault_attachment_limit(self, action_result):
+        url = f"{self.get_phantom_base_url()}rest/system_settings"
+        params = {"sections": json.dumps(["max_size_mb_vault_attachment"])}
+
+        try:
+            response = requests.get(url, params=params, verify=ph_config.platform_strict_tls, timeout=PROTECTWISE_DEFAULT_TIMEOUT)
+            response.raise_for_status()
+            settings = response.json()
+        except (requests.RequestException, ValueError) as e:
+            return action_result.set_status(phantom.APP_ERROR, "Unable to get the platform vault attachment limit", e), None
+
+        if not isinstance(settings, dict):
+            return action_result.set_status(phantom.APP_ERROR, "Platform returned an invalid vault attachment limit response"), None
+
+        ret_val, limit_mb = self._validate_integer(
+            action_result,
+            settings.get("max_size_mb_vault_attachment"),
+            "'Maximum vault attachment size' platform configuration",
+        )
+        if phantom.is_fail(ret_val):
+            return action_result.get_status(), None
+        if limit_mb is None:
+            return action_result.set_status(phantom.APP_ERROR, "Platform vault attachment limit is unavailable"), None
+
+        return phantom.APP_SUCCESS, limit_mb * 1024 * 1024
+
     def _get_packets(self, param):
         action_result = self.add_action_result(ActionResult(param))
 
@@ -317,52 +356,75 @@ class ProtectWiseConnector(BaseConnector):
 
         action_result.add_data(file_info)
 
+        ret_val, max_file_size = self._get_vault_attachment_limit(action_result)
+        if phantom.is_fail(ret_val):
+            return action_result.get_status()
+
         # Now download the file
         file_name = f"{object_id}.pcap"
 
         if hasattr(Vault, "get_vault_tmp_dir"):
-            tmp = tempfile.NamedTemporaryFile(dir=Vault.get_vault_tmp_dir())
+            tmp_dir = Vault.get_vault_tmp_dir()
         else:
-            tmp = tempfile.NamedTemporaryFile(dir="/vault/tmp/", delete=False)
+            tmp_dir = "/vault/tmp/"
 
-        params = {"filename": file_name}
-
-        estimated_size = file_info.get("estimatedSize", None)
-
-        ret_val = self._download_file(file_endpoint, action_result, tmp.name, params, estimated_size)
-
-        if phantom.is_fail(ret_val):
-            return action_result.get_status()
-
-        # MOVE the file to the vault
-        vault_attach_dict = {}
-
-        self.debug_print(f"Vault file name: {file_name}")
-
-        vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = self.get_action_name()
-        vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
-        vault_attach_dict["contains"] = ["pcap"]
+        tmp = tempfile.NamedTemporaryFile(dir=tmp_dir, delete=False)
+        tmp.close()
 
         try:
-            success, message, vault_id = ph_rules.vault_add(self.get_container_id(), tmp.name, file_name, vault_attach_dict)
-        except Exception as e:
-            self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
-            return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
+            params = {"filename": file_name}
+            estimated_size = file_info.get("estimatedSize", None)
+            if estimated_size is not None:
+                try:
+                    estimated_size = int(estimated_size)
+                except (TypeError, ValueError):
+                    return action_result.set_status(phantom.APP_ERROR, "ProtectWise returned an invalid estimated PCAP size")
+                if estimated_size <= 0:
+                    return action_result.set_status(phantom.APP_ERROR, "ProtectWise returned an invalid estimated PCAP size")
+                if estimated_size > max_file_size:
+                    return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
 
-        if not success:
-            self.debug_print(f"Failed to add file to Vault: {message}")
-            return action_result.set_status(phantom.APP_ERROR, f"Failed to add the file to Vault: {message}")
+            ret_val = self._download_file(file_endpoint, action_result, tmp.name, params, max_file_size, estimated_size)
 
-        action_result.set_summary({"vault_id": vault_id})
+            if phantom.is_fail(ret_val):
+                return action_result.get_status()
 
-        return action_result.set_status(phantom.APP_SUCCESS)
+            # MOVE the file to the vault
+            vault_attach_dict = {}
+
+            self.debug_print(f"Vault file name: {file_name}")
+
+            vault_attach_dict[phantom.APP_JSON_ACTION_NAME] = self.get_action_name()
+            vault_attach_dict[phantom.APP_JSON_APP_RUN_ID] = self.get_app_run_id()
+            vault_attach_dict["contains"] = ["pcap"]
+
+            try:
+                success, message, vault_id = ph_rules.vault_add(self.get_container_id(), tmp.name, file_name, vault_attach_dict)
+            except Exception as e:
+                self.debug_print(phantom.APP_ERR_FILE_ADD_TO_VAULT.format(e))
+                return action_result.set_status(phantom.APP_ERROR, "Failed to add the file to Vault", e)
+
+            if not success:
+                self.debug_print(f"Failed to add file to Vault: {message}")
+                return action_result.set_status(phantom.APP_ERROR, f"Failed to add the file to Vault: {message}")
+
+            action_result.set_summary({"vault_id": vault_id})
+
+            return action_result.set_status(phantom.APP_SUCCESS)
+        finally:
+            try:
+                os.unlink(tmp.name)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                self.debug_print(f"Unable to remove temporary PCAP file: {e!s}")
 
     def _parse_time(self, param_name, time_str, action_result):
         ret_val = None
         try:
             dt = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
             dt_tt = dt.timetuple()
-            ret_val = int(time.mktime(dt_tt)) * 1000
+            ret_val = calendar.timegm(dt_tt) * 1000
         except Exception as e:
             action_result.set_status(phantom.APP_ERROR, f"Unable to parse {param_name} value {time_str}, Error: {e!s}")
 
@@ -592,6 +654,16 @@ class ProtectWiseConnector(BaseConnector):
         query_params["minLimit"] = limit
         query_params["end"] = self._time_now()
 
+        try:
+            query_start = self._normalize_epoch_millis(query_params["start"])[0]
+        except (TypeError, ValueError, OverflowError, OSError):
+            return action_result.set_status(phantom.APP_ERROR, "Stored poll checkpoint is not a valid epoch millisecond value"), None
+
+        if query_start < 0 or query_start > query_params["end"]:
+            return action_result.set_status(phantom.APP_ERROR, "Stored poll checkpoint is outside the current query window"), None
+
+        query_params["start"] = query_start
+
         return phantom.APP_SUCCESS, query_params
 
     def _get_artifact_name(self, observation):
@@ -614,7 +686,7 @@ class ProtectWiseConnector(BaseConnector):
 
         return default_name
 
-    def _download_file(self, url_to_download, action_result, local_file_path, params, estimated_size=None):
+    def _download_file(self, url_to_download, action_result, local_file_path, params, max_file_size, estimated_size=None):
         """Function that downloads the file from a url
 
         Args:
@@ -647,44 +719,93 @@ class ProtectWiseConnector(BaseConnector):
         except Exception as e:
             return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
-        if r.status_code != requests.codes.ok:  # pylint: disable=E1101
-            return action_result.set_status(phantom.APP_ERROR, f"Server returned status_code: {r.status_code}")
-
-        # get the content length
-        content_size = r.headers.get("content-length")
-
-        if not content_size and estimated_size is not None:
-            content_size = estimated_size
-
-        if not content_size:
-            return action_result.set_status(phantom.APP_ERROR, "Unable to get content length")
-
-        self.save_progress(phantom.APP_PROG_FILE_SIZE, value=content_size, type="bytes")
-
-        bytes_to_download = int(content_size)
-
-        # init to download the whole file in a single read
-        block_size = bytes_to_download
-
-        # if the file is big then download in % increments
-        if bytes_to_download > big_file_size_bytes:
-            block_size = (bytes_to_download * percent_block) / 100
-
-        bytes_downloaded = 0
-
         try:
-            with open(local_file_path, "wb") as file_handle:
-                for chunk in r.iter_content(chunk_size=block_size):
-                    if chunk:
+            if r.status_code != requests.codes.ok:  # pylint: disable=E1101
+                return action_result.set_status(phantom.APP_ERROR, f"Server returned status_code: {r.status_code}")
+
+            # Transfer-Encoding takes precedence over Content-Length under RFC 9112.
+            content_size = None if r.headers.get("transfer-encoding") else r.headers.get("content-length")
+
+            if not content_size and estimated_size is not None:
+                content_size = estimated_size
+
+            if not content_size:
+                return action_result.set_status(phantom.APP_ERROR, "Unable to get content length")
+
+            try:
+                bytes_to_download = int(content_size)
+            except (TypeError, ValueError):
+                return action_result.set_status(phantom.APP_ERROR, "Invalid content length returned by server")
+
+            if bytes_to_download <= 0:
+                return action_result.set_status(phantom.APP_ERROR, "Invalid content length returned by server")
+
+            if bytes_to_download > max_file_size:
+                return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
+
+            self.save_progress(phantom.APP_PROG_FILE_SIZE, value=bytes_to_download, type="bytes")
+
+            # init to download the whole file in a single read
+            block_size = bytes_to_download
+
+            # if the file is big then download in % increments
+            if bytes_to_download > big_file_size_bytes:
+                block_size = max(1, bytes_to_download * percent_block // 100)
+
+            bytes_downloaded = 0
+
+            try:
+                with open(local_file_path, "wb") as file_handle:
+                    for chunk in r.iter_content(chunk_size=block_size):
+                        if not chunk:
+                            continue
+                        if bytes_downloaded + len(chunk) > max_file_size:
+                            return action_result.set_status(phantom.APP_ERROR, "PCAP exceeds the platform vault attachment limit")
                         bytes_downloaded += len(chunk)
                         file_handle.write(chunk)
                         file_handle.flush()
                         os.fsync(file_handle.fileno())
-                        self.send_progress(PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS, float(bytes_downloaded) / float(bytes_to_download))
-        except Exception as e:
-            return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
+                        progress = min(1.0, float(bytes_downloaded) / float(bytes_to_download))
+                        self.send_progress(PROTECTWISE_PROG_FINISHED_DOWNLOADING_STATUS, progress)
+            except Exception as e:
+                return action_result.set_status(phantom.APP_ERROR, "Error downloading file", e)
 
-        return phantom.APP_SUCCESS
+            return self._validate_pcap_file(action_result, local_file_path)
+        finally:
+            r.close()
+
+    def _validate_pcap_file(self, action_result, local_file_path):
+        try:
+            with open(local_file_path, "rb") as file_handle:
+                header = file_handle.read(24)
+                file_handle.seek(0)
+                error_body = file_handle.read(1024 * 1024)
+        except OSError as e:
+            return action_result.set_status(phantom.APP_ERROR, "Error validating downloaded file", e)
+
+        pcap_endianness = {
+            b"\xa1\xb2\xc3\xd4": ">",
+            b"\xd4\xc3\xb2\xa1": "<",
+            b"\xa1\xb2\x3c\x4d": ">",
+            b"\x4d\x3c\xb2\xa1": "<",
+        }
+        endianness = pcap_endianness.get(header[:4])
+        if endianness and len(header) == 24:
+            version_major, version_minor = struct.unpack(f"{endianness}HH", header[4:8])
+            if (version_major, version_minor) == (2, 4):
+                return phantom.APP_SUCCESS
+
+        error_message = "Downloaded data is not a valid tcpdump PCAP file"
+        try:
+            response_body = json.loads(error_body)
+            if isinstance(response_body, dict):
+                error_details = response_body.get("error")
+                if isinstance(error_details, dict) and error_details.get("message"):
+                    error_message = f"Server returned error while downloading PCAP: {sanitize_external_value(error_details['message'])}"
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            pass
+
+        return action_result.set_status(phantom.APP_ERROR, error_message)
 
     def _create_artifacts_for_event(self, event, action_result, container_index):
         artifacts = []
@@ -699,7 +820,8 @@ class ProtectWiseConnector(BaseConnector):
         # we need to get the details of the event
         ret_val, resp_json = self._make_rest_call(f"/events/{event_id}", action_result)
         if phantom.is_fail(ret_val):
-            return self.set_status(phantom.APP_ERROR, f"Failed to get events: {action_result.get_message()}")
+            self.set_status(phantom.APP_ERROR, f"Failed to get event details: {action_result.get_message()}")
+            return None
 
         observations = resp_json.get("observations")
 
@@ -766,6 +888,12 @@ class ProtectWiseConnector(BaseConnector):
     def _get_str_from_epoch(self, epoch_milli):
         # 2015-07-21T00:27:59Z
         return format_epoch_millis_utc(epoch_milli)
+
+    def _normalize_epoch_millis(self, value):
+        if isinstance(value, bool):
+            raise ValueError("Boolean values are not epoch milliseconds")
+        normalized = int(value)
+        return normalized, self._get_str_from_epoch(normalized)
 
     def _save_results(self, results):
         containers_processed = 0
@@ -844,9 +972,26 @@ class ProtectWiseConnector(BaseConnector):
         no_of_events = len(events)
         self.save_progress(f"Processing {no_of_events} events")
 
-        results = []
+        event_times = []
+        for event in events:
+            if not isinstance(event, dict):
+                return self.set_status(phantom.APP_ERROR, "ProtectWise returned an event with an unsupported response shape")
 
-        for i, event in enumerate(events):
+            try:
+                started_at, start_time = self._normalize_epoch_millis(event["startedAt"])
+                _ended_at, end_time = self._normalize_epoch_millis(event["endedAt"])
+            except (KeyError, TypeError, ValueError, OverflowError, OSError) as e:
+                return self.set_status(phantom.APP_ERROR, f"ProtectWise returned an event with an invalid timestamp: {e!s}")
+
+            if not query_params["start"] <= started_at < query_params["end"]:
+                return self.set_status(phantom.APP_ERROR, "ProtectWise returned an event timestamp outside the requested query window")
+
+            event_times.append((started_at, start_time, end_time))
+
+        results = []
+        detail_failed_event_times = []
+
+        for i, (event, (started_at, start_time, end_time)) in enumerate(zip(events, event_times)):
             self.send_progress(f"Processing Container # {i}")
 
             container = dict()
@@ -858,8 +1003,8 @@ class ProtectWiseConnector(BaseConnector):
                     container["source_data_identifier"], self._get_str_from_epoch(round(time.time() * 1000))
                 )
             container["name"] = sanitize_external_value(event["message"])
-            container["start_time"] = self._get_str_from_epoch(event["startedAt"])
-            container["end_time"] = self._get_str_from_epoch(event["endedAt"])
+            container["start_time"] = start_time
+            container["end_time"] = end_time
             container["id"] = event["id"]
 
             tags = event.get("tags")
@@ -867,14 +1012,24 @@ class ProtectWiseConnector(BaseConnector):
                 container["tags"] = tags.split(",")
 
             artifacts = self._create_artifacts_for_event(event, action_result, i)
+            if artifacts is None:
+                detail_failed_event_times.append(started_at)
+                continue
 
             results.append({"container": container, "artifacts": artifacts})
 
         self.send_progress("Done Processing")
         _containers_processed, failed_event_times = self._save_results(results)
+        failed_event_times.extend(detail_failed_event_times)
 
         if not self.is_poll_now():
             self._state["first_run"] = False
+
+        if detail_failed_event_times and self.is_poll_now():
+            return self.set_status(
+                phantom.APP_ERROR,
+                f"Failed to retrieve details for {len(detail_failed_event_times)} event(s)",
+            )
 
         if failed_event_times and not self.is_poll_now():
             retry_from = min(failed_event_times) - 1
@@ -884,7 +1039,7 @@ class ProtectWiseConnector(BaseConnector):
             self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = retry_from
             return self.set_status(
                 phantom.APP_ERROR,
-                f"Failed to save {len(failed_event_times)} event(s); the ingestion checkpoint was retained for retry",
+                f"Failed to process {len(failed_event_times)} event(s); the ingestion checkpoint was retained for retry",
             )
 
         # Store the query boundary after a successful empty response, or the
@@ -895,11 +1050,11 @@ class ProtectWiseConnector(BaseConnector):
         if no_of_events and not self.is_poll_now():
             config = self.get_config()
 
-            last_date_time = events[0]["startedAt"]
+            last_date_time = event_times[0][0]
 
             self._state[PROTECTWISE_JSON_LAST_DATE_TIME] = last_date_time
 
-            date_strings = [x["startedAt"] for x in events]
+            date_strings = [event_time[0] for event_time in event_times]
 
             date_strings = set(date_strings)
 
